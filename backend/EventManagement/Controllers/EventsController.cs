@@ -68,7 +68,7 @@ public class EventsController(AppDbContext db) : ControllerBase
         query = sortBy?.ToLower() switch
         {
             "popularity" => query.OrderByDescending(e => e.Bookings.Count(b => b.Status == StatusConfirmed)),
-            "price"      => query.OrderBy(e => e.Price),
+            "price"      => query.OrderBy(e => (double)e.Price),
             _            => query.OrderBy(e => e.StartDate)
         };
 
