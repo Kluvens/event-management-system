@@ -1,0 +1,23 @@
+# Build output
+bin/
+obj/
+
+# SQLite databases
+*.db
+*.db-shm
+*.db-wal
+
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.user
+
+# dotnet secrets
+appsettings.*.json
+!appsettings.Development.json
+
+# NuGet
+*.nupkg
