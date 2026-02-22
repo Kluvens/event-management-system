@@ -4,7 +4,9 @@ public class Booking
 {
     public int Id { get; set; }
     public DateTime BookedAt { get; set; } = DateTime.UtcNow;
-    public string Status { get; set; } = "Confirmed"; // "Confirmed" or "Cancelled"
+    // "Confirmed" or "Cancelled"
+    public string Status { get; set; } = "Confirmed";
+    public int PointsEarned { get; set; } = 0;
 
     public int UserId { get; set; }
     public User User { get; set; } = null!;

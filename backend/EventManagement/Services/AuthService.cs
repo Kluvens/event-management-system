@@ -22,7 +22,7 @@ public class AuthService(AppDbContext db, JwtService jwt)
         db.Users.Add(user);
         await db.SaveChangesAsync();
 
-        return new AuthResponse(jwt.GenerateToken(user), user.Id, user.Name, user.Email, user.Role);
+        return ToResponse(jwt.GenerateToken(user), user);
     }
 
     public async Task<AuthResponse?> LoginAsync(LoginRequest req)
@@ -31,6 +31,20 @@ public class AuthService(AppDbContext db, JwtService jwt)
         if (user is null || !BCrypt.Net.BCrypt.Verify(req.Password, user.PasswordHash))
             return null;
 
-        return new AuthResponse(jwt.GenerateToken(user), user.Id, user.Name, user.Email, user.Role);
+        return ToResponse(jwt.GenerateToken(user), user);
     }
+
+    public async Task<bool> ChangePasswordAsync(int userId, ChangePasswordRequest req)
+    {
+        var user = await db.Users.FindAsync(userId);
+        if (user is null || !BCrypt.Net.BCrypt.Verify(req.CurrentPassword, user.PasswordHash))
+            return false;
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.NewPassword);
+        await db.SaveChangesAsync();
+        return true;
+    }
+
+    private static AuthResponse ToResponse(string token, User user) =>
+        new(token, user.Id, user.Name, user.Email, user.Role, user.LoyaltyPoints, user.LoyaltyTier);
 }

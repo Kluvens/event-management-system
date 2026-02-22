@@ -8,6 +8,8 @@ public record BookingResponse(
     string EventTitle,
     string EventLocation,
     DateTime EventStartDate,
+    decimal EventPrice,
     DateTime BookedAt,
-    string Status
+    string Status,
+    int PointsEarned
 );

@@ -1,5 +1,7 @@
+using System.Security.Claims;
 using EventManagement.DTOs;
 using EventManagement.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EventManagement.Controllers;
@@ -24,5 +26,16 @@ public class AuthController(AuthService auth) : ControllerBase
         if (result is null)
             return Unauthorized(new { message = "Invalid email or password." });
         return Ok(result);
+    }
+
+    [Authorize]
+    [HttpPut("change-password")]
+    public async Task<IActionResult> ChangePassword(ChangePasswordRequest req)
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var ok = await auth.ChangePasswordAsync(userId, req);
+        if (!ok)
+            return BadRequest(new { message = "Current password is incorrect." });
+        return NoContent();
     }
 }

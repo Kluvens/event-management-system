@@ -7,7 +7,10 @@ public record CreateEventRequest(
     DateTime StartDate,
     DateTime EndDate,
     int Capacity,
-    int CategoryId
+    decimal Price,
+    bool IsPublic,
+    int CategoryId,
+    List<int>? TagIds
 );
 
 public record UpdateEventRequest(
@@ -17,8 +20,13 @@ public record UpdateEventRequest(
     DateTime StartDate,
     DateTime EndDate,
     int Capacity,
-    int CategoryId
+    decimal Price,
+    bool IsPublic,
+    int CategoryId,
+    List<int>? TagIds
 );
+
+public record PostponeEventRequest(DateTime NewStartDate, DateTime NewEndDate);
 
 public record EventResponse(
     int Id,
@@ -29,9 +37,26 @@ public record EventResponse(
     DateTime EndDate,
     int Capacity,
     int BookingCount,
+    decimal Price,
+    bool IsPublic,
+    string Status,
+    DateTime? PostponedDate,
     DateTime CreatedAt,
     int CreatedById,
     string CreatedByName,
     int CategoryId,
-    string CategoryName
+    string CategoryName,
+    List<string> Tags
+);
+
+public record EventStatsResponse(
+    int EventId,
+    string Title,
+    int TotalCapacity,
+    int ConfirmedBookings,
+    int CancelledBookings,
+    double OccupancyRate,
+    decimal TotalRevenue,
+    double AverageRating,
+    int ReviewCount
 );

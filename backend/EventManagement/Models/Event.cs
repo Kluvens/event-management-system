@@ -9,6 +9,11 @@ public class Event
     public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }
     public int Capacity { get; set; }
+    public decimal Price { get; set; } = 0;
+    public bool IsPublic { get; set; } = true;
+    // "Active" | "Cancelled" | "Postponed"
+    public string Status { get; set; } = "Active";
+    public DateTime? PostponedDate { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public int CreatedById { get; set; }
@@ -18,4 +23,7 @@ public class Event
     public Category Category { get; set; } = null!;
 
     public ICollection<Booking> Bookings { get; set; } = new List<Booking>();
+    public ICollection<EventTag> EventTags { get; set; } = new List<EventTag>();
+    public ICollection<Review> Reviews { get; set; } = new List<Review>();
+    public ICollection<Announcement> Announcements { get; set; } = new List<Announcement>();
 }
