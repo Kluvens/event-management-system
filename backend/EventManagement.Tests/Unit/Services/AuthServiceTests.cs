@@ -85,9 +85,9 @@ public class AuthServiceTests : IDisposable
         var result = await _service.LoginAsync(
             new LoginRequest("carol@test.com", "Pass!"));
 
-        Assert.NotNull(result);
-        Assert.Equal("carol@test.com", result.Email);
-        Assert.False(string.IsNullOrEmpty(result.Token));
+        Assert.NotNull(result.Response);
+        Assert.Equal("carol@test.com", result.Response!.Email);
+        Assert.False(string.IsNullOrEmpty(result.Response.Token));
     }
 
     [Fact]
@@ -99,7 +99,7 @@ public class AuthServiceTests : IDisposable
         var result = await _service.LoginAsync(
             new LoginRequest("dave@test.com", "WrongPass!"));
 
-        Assert.Null(result);
+        Assert.Null(result.Response);
     }
 
     [Fact]
@@ -108,7 +108,7 @@ public class AuthServiceTests : IDisposable
         var result = await _service.LoginAsync(
             new LoginRequest("nobody@test.com", "Pass!"));
 
-        Assert.Null(result);
+        Assert.Null(result.Response);
     }
 
     // ── ChangePasswordAsync ──────────────────────────────────────────
@@ -128,7 +128,7 @@ public class AuthServiceTests : IDisposable
         // Verify new password works
         var login = await _service.LoginAsync(
             new LoginRequest("eve@test.com", "NewPass!"));
-        Assert.NotNull(login);
+        Assert.NotNull(login.Response);
     }
 
     [Fact]
@@ -156,6 +156,6 @@ public class AuthServiceTests : IDisposable
 
         var oldLogin = await _service.LoginAsync(
             new LoginRequest("grace@test.com", "OldPass!"));
-        Assert.Null(oldLogin);
+        Assert.Null(oldLogin.Response);
     }
 }

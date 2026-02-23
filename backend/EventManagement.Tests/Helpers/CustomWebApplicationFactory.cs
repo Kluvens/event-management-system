@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace EventManagement.Tests.Helpers;
@@ -14,6 +15,9 @@ namespace EventManagement.Tests.Helpers;
 /// </summary>
 public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 {
+    /// <summary>Registration key used for SuperAdmin creation in all tests.</summary>
+    public const string TestAdminKey = "test-admin-key";
+
     // Keep the connection open for the lifetime of the factory so that the
     // in-memory SQLite database persists across requests within the same test.
     private readonly SqliteConnection _connection;
@@ -27,6 +31,14 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
+
+        // Override the admin registration key with a known test value so tests
+        // don't depend on the value in appsettings.json.
+        builder.ConfigureAppConfiguration((_, config) =>
+            config.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["AdminSettings:RegistrationKey"] = TestAdminKey
+            }));
 
         builder.ConfigureServices(services =>
         {

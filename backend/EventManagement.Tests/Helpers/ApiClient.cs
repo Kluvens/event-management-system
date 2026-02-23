@@ -16,6 +16,15 @@ public static class ApiClient
         client.PostAsJsonAsync("/api/auth/register",
             new RegisterRequest(name, email, password));
 
+    public static async Task<(string Token, int UserId)> RegisterAndGetIdAsync(
+        HttpClient client, string name, string email, string password)
+    {
+        var response = await RegisterAsync(client, name, email, password);
+        response.EnsureSuccessStatusCode();
+        var auth = await response.Content.ReadFromJsonAsync<AuthResponse>();
+        return (auth!.Token, auth.UserId);
+    }
+
     public static async Task<string> RegisterAndLoginAsync(
         HttpClient client, string name, string email, string password)
     {
@@ -28,6 +37,20 @@ public static class ApiClient
     {
         var response = await client.PostAsJsonAsync("/api/auth/login",
             new LoginRequest(email, password));
+        response.EnsureSuccessStatusCode();
+        var auth = await response.Content.ReadFromJsonAsync<AuthResponse>();
+        return auth!.Token;
+    }
+
+    /// <summary>
+    /// Creates a SuperAdmin account via the key-protected registration endpoint
+    /// and returns the JWT token.
+    /// </summary>
+    public static async Task<string> RegisterSuperAdminAsync(
+        HttpClient client, string name, string email, string password, string registrationKey)
+    {
+        var response = await client.PostAsJsonAsync("/api/admin/register",
+            new { name, email, password, registrationKey });
         response.EnsureSuccessStatusCode();
         var auth = await response.Content.ReadFromJsonAsync<AuthResponse>();
         return auth!.Token;

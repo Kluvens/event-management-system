@@ -8,11 +8,14 @@ namespace EventManagement.Tests.Integration;
 /// <summary>
 /// Tests for the development-only data management endpoints.
 /// Uses its own factory so that reset/seed operations don't pollute other test classes.
+/// Dev endpoints now require an Admin or SuperAdmin JWT.
 /// </summary>
-public class DevControllerTests : IDisposable
+public sealed class DevControllerTests : IAsyncLifetime, IDisposable
 {
     private readonly CustomWebApplicationFactory _factory;
-    private readonly HttpClient _client;
+    private readonly HttpClient _client;        // unauthenticated
+    private HttpClient _authedClient = null!;   // SuperAdmin — used for all dev calls
+    private HttpClient _attendeeClient = null!; // Attendee — used for 403 tests
 
     public DevControllerTests()
     {
@@ -20,21 +23,40 @@ public class DevControllerTests : IDisposable
         _client = _factory.CreateClient();
     }
 
+    public async Task InitializeAsync()
+    {
+        var saToken = await ApiClient.RegisterSuperAdminAsync(
+            _client, "Dev SuperAdmin", "devsa@test.com", "Password1!",
+            CustomWebApplicationFactory.TestAdminKey);
+        _authedClient = ApiClient.WithToken(_factory, saToken);
+
+        var attendeeToken = await ApiClient.RegisterAndLoginAsync(
+            _client, "Dev Attendee", "devattendee@test.com", "Password1!");
+        _attendeeClient = ApiClient.WithToken(_factory, attendeeToken);
+    }
+
+    public Task DisposeAsync()
+    {
+        _authedClient?.Dispose();
+        _attendeeClient?.Dispose();
+        return Task.CompletedTask;
+    }
+
     public void Dispose()
     {
         _client.Dispose();
         _factory.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     // ── POST /api/dev/seed ────────────────────────────────────────────
 
     [Fact]
-    public async Task Seed_EmptyDatabase_Returns200WithUserIds()
+    public async Task Seed_WithAdminToken_EmptyDatabase_Returns200WithUserIds()
     {
-        // Reset first to ensure empty state
-        await _client.DeleteAsync("/api/dev/reset");
+        await _authedClient.DeleteAsync("/api/dev/reset");
 
-        var response = await _client.PostAsync("/api/dev/seed", null);
+        var response = await _authedClient.PostAsync("/api/dev/seed", null);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<SeedResponse>();
@@ -44,35 +66,48 @@ public class DevControllerTests : IDisposable
     }
 
     [Fact]
-    public async Task Seed_DataAlreadyExists_Returns409()
+    public async Task Seed_WithAdminToken_DataAlreadyExists_Returns409()
     {
-        await _client.DeleteAsync("/api/dev/reset");
-        await _client.PostAsync("/api/dev/seed", null);
+        await _authedClient.DeleteAsync("/api/dev/reset");
+        await _authedClient.PostAsync("/api/dev/seed", null);
 
-        // Seeding again should fail with Conflict
-        var response = await _client.PostAsync("/api/dev/seed", null);
+        var response = await _authedClient.PostAsync("/api/dev/seed", null);
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Seed_WithoutToken_Returns401()
+    {
+        var response = await _client.PostAsync("/api/dev/seed", null);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Seed_WithAttendeeToken_Returns403()
+    {
+        var response = await _attendeeClient.PostAsync("/api/dev/seed", null);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     // ── DELETE /api/dev/reset ─────────────────────────────────────────
 
     [Fact]
-    public async Task Reset_Returns200_AndClearsAllUserData()
+    public async Task Reset_WithAdminToken_Returns200_AndClearsAllUserData()
     {
-        await _client.DeleteAsync("/api/dev/reset");
-        await _client.PostAsync("/api/dev/seed", null);
+        await _authedClient.DeleteAsync("/api/dev/reset");
+        await _authedClient.PostAsync("/api/dev/seed", null);
 
-        // Verify there are events
         var beforeResp = await _client.GetAsync("/api/events");
         var beforeEvents = await beforeResp.Content.ReadFromJsonAsync<List<object>>();
         Assert.NotNull(beforeEvents);
         Assert.NotEmpty(beforeEvents);
 
-        var resetResp = await _client.DeleteAsync("/api/dev/reset");
+        var resetResp = await _authedClient.DeleteAsync("/api/dev/reset");
         Assert.Equal(HttpStatusCode.OK, resetResp.StatusCode);
 
-        // After reset, no events should exist
         var afterResp = await _client.GetAsync("/api/events");
         var afterEvents = await afterResp.Content.ReadFromJsonAsync<List<object>>();
         Assert.NotNull(afterEvents);
@@ -80,11 +115,10 @@ public class DevControllerTests : IDisposable
     }
 
     [Fact]
-    public async Task Reset_PreservesTagsAndCategories()
+    public async Task Reset_WithAdminToken_PreservesTagsAndCategories()
     {
-        await _client.DeleteAsync("/api/dev/reset");
+        await _authedClient.DeleteAsync("/api/dev/reset");
 
-        // Tags and categories must still be available
         var tagsResp = await _client.GetAsync("/api/tags");
         Assert.Equal(HttpStatusCode.OK, tagsResp.StatusCode);
         var tags = await tagsResp.Content.ReadFromJsonAsync<List<object>>();
@@ -98,26 +132,58 @@ public class DevControllerTests : IDisposable
         Assert.NotEmpty(cats);
     }
 
+    [Fact]
+    public async Task Reset_WithoutToken_Returns401()
+    {
+        var response = await _client.DeleteAsync("/api/dev/reset");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Reset_WithAttendeeToken_Returns403()
+    {
+        var response = await _attendeeClient.DeleteAsync("/api/dev/reset");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
     // ── DELETE /api/dev/events/{eventId} ─────────────────────────────
 
     [Fact]
-    public async Task ResetEvent_ExistingEvent_Returns200()
+    public async Task ResetEvent_WithAdminToken_ExistingEvent_Returns200()
     {
-        await _client.DeleteAsync("/api/dev/reset");
-        var seedResp = await _client.PostAsync("/api/dev/seed", null);
+        await _authedClient.DeleteAsync("/api/dev/reset");
+        var seedResp = await _authedClient.PostAsync("/api/dev/seed", null);
         var seed = await seedResp.Content.ReadFromJsonAsync<SeedResponse>();
         Assert.NotNull(seed);
 
-        var response = await _client.DeleteAsync($"/api/dev/events/{seed.PastEventId}");
+        var response = await _authedClient.DeleteAsync($"/api/dev/events/{seed.PastEventId}");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]
-    public async Task ResetEvent_NonexistentEvent_Returns404()
+    public async Task ResetEvent_WithAdminToken_NonexistentEvent_Returns404()
     {
-        await _client.DeleteAsync("/api/dev/reset");
-        var response = await _client.DeleteAsync("/api/dev/events/999999");
+        await _authedClient.DeleteAsync("/api/dev/reset");
+        var response = await _authedClient.DeleteAsync("/api/dev/events/999999");
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ResetEvent_WithoutToken_Returns401()
+    {
+        var response = await _client.DeleteAsync("/api/dev/events/1");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ResetEvent_WithAttendeeToken_Returns403()
+    {
+        var response = await _attendeeClient.DeleteAsync("/api/dev/events/1");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     // ── Seed then verify the created data is usable ───────────────────
@@ -125,8 +191,8 @@ public class DevControllerTests : IDisposable
     [Fact]
     public async Task SeedData_HostCanLoginAndSeeEvents()
     {
-        await _client.DeleteAsync("/api/dev/reset");
-        await _client.PostAsync("/api/dev/seed", null);
+        await _authedClient.DeleteAsync("/api/dev/reset");
+        await _authedClient.PostAsync("/api/dev/seed", null);
 
         var loginResp = await _client.PostAsJsonAsync("/api/auth/login",
             new { Email = "host@example.com", Password = "Password1!" });
