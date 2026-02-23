@@ -110,6 +110,7 @@ public class DevController(AppDbContext db, IWebHostEnvironment env) : Controlle
             Capacity    = 200,
             Price       = 49.99m,
             IsPublic    = true,
+            Status      = "Published",
             CategoryId  = 1,   // Conference
             CreatedById = host.Id
         };
@@ -123,6 +124,7 @@ public class DevController(AppDbContext db, IWebHostEnvironment env) : Controlle
             Capacity    = 50,
             Price       = 0m,
             IsPublic    = true,
+            Status      = "Published",
             CategoryId  = 5,   // Networking
             CreatedById = host.Id
         };

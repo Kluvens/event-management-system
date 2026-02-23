@@ -11,8 +11,8 @@ public class Event
     public int Capacity { get; set; }
     public decimal Price { get; set; } = 0;
     public bool IsPublic { get; set; } = true;
-    // "Active" | "Cancelled" | "Postponed"
-    public string Status { get; set; } = "Active";
+    // "Draft" | "Published" | "Cancelled" | "Postponed"
+    public string Status { get; set; } = "Draft";
     public bool IsSuspended { get; set; } = false;
     public DateTime? PostponedDate { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

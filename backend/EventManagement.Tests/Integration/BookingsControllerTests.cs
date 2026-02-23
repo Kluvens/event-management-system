@@ -6,7 +6,7 @@ using Xunit;
 
 namespace EventManagement.Tests.Integration;
 
-public class BookingsControllerTests : IDisposable
+public sealed class BookingsControllerTests : IDisposable
 {
     private readonly CustomWebApplicationFactory _factory;
     private readonly HttpClient _client;
@@ -21,6 +21,7 @@ public class BookingsControllerTests : IDisposable
     {
         _client.Dispose();
         _factory.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────
@@ -329,5 +330,112 @@ public class BookingsControllerTests : IDisposable
 
         var rebooked = await rebookResp.Content.ReadFromJsonAsync<BookingResponse>();
         Assert.Equal("Confirmed", rebooked!.Status);
+    }
+
+    // ── Draft event guard ─────────────────────────────────────────────
+
+    [Fact]
+    public async Task Create_DraftEvent_Returns400()
+    {
+        var hostToken = await ApiClient.RegisterAndLoginAsync(
+            _client, "HostDraft", "hostdraft@book.test", "Pass!");
+        var hostClient = ApiClient.WithToken(_factory, hostToken);
+
+        // Create without publishing
+        var createResp = await ApiClient.CreateEventAsync(hostClient, "Draft Event", draft: true);
+        var ev = await createResp.Content.ReadFromJsonAsync<EventResponse>();
+
+        var attendeeToken = await ApiClient.RegisterAndLoginAsync(
+            _client, "AttendeeDraft", "attendeedraft@book.test", "Pass!");
+        var attendeeClient = ApiClient.WithToken(_factory, attendeeToken);
+
+        var response = await ApiClient.BookEventAsync(attendeeClient, ev!.Id);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    // ── Check-in endpoints ────────────────────────────────────────────
+
+    [Fact]
+    public async Task Checkin_ByHost_Returns204()
+    {
+        var (hostClient, eventId) = await SetupHostAndEventAsync("CI1");
+
+        var attendeeToken = await ApiClient.RegisterAndLoginAsync(
+            _client, "AttendeeCi1", "attendeeci1@book.test", "Pass!");
+        var attendeeClient = ApiClient.WithToken(_factory, attendeeToken);
+
+        var bookResp = await ApiClient.BookEventAsync(attendeeClient, eventId);
+        var booking = await bookResp.Content.ReadFromJsonAsync<BookingResponse>();
+
+        var response = await hostClient.PostAsync($"/api/bookings/{booking!.Id}/checkin", null);
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Checkin_AlreadyCheckedIn_Returns400()
+    {
+        var (hostClient, eventId) = await SetupHostAndEventAsync("CI2");
+
+        var attendeeToken = await ApiClient.RegisterAndLoginAsync(
+            _client, "AttendeeCi2", "attendeeci2@book.test", "Pass!");
+        var attendeeClient = ApiClient.WithToken(_factory, attendeeToken);
+
+        var bookResp = await ApiClient.BookEventAsync(attendeeClient, eventId);
+        var booking = await bookResp.Content.ReadFromJsonAsync<BookingResponse>();
+
+        await hostClient.PostAsync($"/api/bookings/{booking!.Id}/checkin", null);
+        var response = await hostClient.PostAsync($"/api/bookings/{booking.Id}/checkin", null);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Checkin_ViaToken_Returns204()
+    {
+        var (hostClient, eventId) = await SetupHostAndEventAsync("CI3");
+
+        var attendeeToken = await ApiClient.RegisterAndLoginAsync(
+            _client, "AttendeeCi3", "attendeeci3@book.test", "Pass!");
+        var attendeeClient = ApiClient.WithToken(_factory, attendeeToken);
+
+        var bookResp = await ApiClient.BookEventAsync(attendeeClient, eventId);
+        var booking = await bookResp.Content.ReadFromJsonAsync<BookingResponse>();
+        Assert.NotNull(booking!.CheckInToken);
+
+        var response = await hostClient.PostAsync(
+            $"/api/bookings/checkin/{booking.CheckInToken}", null);
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetCheckinInfo_ViaToken_Returns200()
+    {
+        var (_, eventId) = await SetupHostAndEventAsync("CI4");
+
+        var attendeeToken = await ApiClient.RegisterAndLoginAsync(
+            _client, "AttendeeCi4", "attendeeci4@book.test", "Pass!");
+        var attendeeClient = ApiClient.WithToken(_factory, attendeeToken);
+
+        var bookResp = await ApiClient.BookEventAsync(attendeeClient, eventId);
+        var booking = await bookResp.Content.ReadFromJsonAsync<BookingResponse>();
+
+        var response = await attendeeClient.GetAsync(
+            $"/api/bookings/checkin/{booking!.CheckInToken}");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Create_NewBooking_HasCheckInToken()
+    {
+        var (_, eventId) = await SetupHostAndEventAsync("CI5");
+
+        var attendeeToken = await ApiClient.RegisterAndLoginAsync(
+            _client, "AttendeeCi5", "attendeeci5@book.test", "Pass!");
+        var attendeeClient = ApiClient.WithToken(_factory, attendeeToken);
+
+        var bookResp = await ApiClient.BookEventAsync(attendeeClient, eventId);
+        var booking = await bookResp.Content.ReadFromJsonAsync<BookingResponse>();
+
+        Assert.NotNull(booking!.CheckInToken);
+        Assert.False(string.IsNullOrWhiteSpace(booking.CheckInToken));
     }
 }

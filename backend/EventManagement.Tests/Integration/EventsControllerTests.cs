@@ -6,7 +6,7 @@ using Xunit;
 
 namespace EventManagement.Tests.Integration;
 
-public class EventsControllerTests : IDisposable
+public sealed class EventsControllerTests : IDisposable
 {
     private readonly CustomWebApplicationFactory _factory;
     private readonly HttpClient _client;
@@ -21,6 +21,7 @@ public class EventsControllerTests : IDisposable
     {
         _client.Dispose();
         _factory.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     // ── GET /api/events ───────────────────────────────────────────────
@@ -172,14 +173,14 @@ public class EventsControllerTests : IDisposable
         var authed = ApiClient.WithToken(_factory, token);
 
         var response = await ApiClient.CreateEventAsync(authed, "My Conference",
-            price: 49.99m, isPublic: true, categoryId: 1);
+            price: 49.99m, isPublic: true, categoryId: 1, draft: true);
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var ev = await response.Content.ReadFromJsonAsync<EventResponse>();
         Assert.NotNull(ev);
         Assert.Equal("My Conference", ev.Title);
         Assert.Equal(49.99m, ev.Price);
-        Assert.Equal("Active", ev.Status);
+        Assert.Equal("Draft", ev.Status);
     }
 
     [Fact]
@@ -454,5 +455,113 @@ public class EventsControllerTests : IDisposable
             new { Title = "Hack", Message = "Hacked!" });
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    // ── Draft / Publish lifecycle ─────────────────────────────────────
+
+    [Fact]
+    public async Task Create_DefaultsToDraft_NotVisibleToPublic()
+    {
+        var token = await ApiClient.RegisterAndLoginAsync(
+            _client, "DraftHost", "drafthost@events.test", "Pass!");
+        var authed = ApiClient.WithToken(_factory, token);
+
+        // Create without publishing
+        var createResp = await ApiClient.CreateEventAsync(authed, "Secret Draft", draft: true);
+        var created = await createResp.Content.ReadFromJsonAsync<EventResponse>();
+        Assert.NotNull(created);
+        Assert.Equal("Draft", created.Status);
+
+        // Anonymous user cannot see it in the listing
+        var allResp = await _client.GetAsync("/api/events");
+        var events = await allResp.Content.ReadFromJsonAsync<List<EventResponse>>();
+        Assert.DoesNotContain(events!, e => e.Id == created.Id);
+
+        // Anonymous user gets 404 on direct access
+        var getResp = await _client.GetAsync($"/api/events/{created.Id}");
+        Assert.Equal(HttpStatusCode.NotFound, getResp.StatusCode);
+    }
+
+    [Fact]
+    public async Task Publish_DraftEvent_Returns204_AndEventBecomesVisible()
+    {
+        var token = await ApiClient.RegisterAndLoginAsync(
+            _client, "Publisher", "publisher@events.test", "Pass!");
+        var authed = ApiClient.WithToken(_factory, token);
+
+        var createResp = await ApiClient.CreateEventAsync(authed, "To Publish", draft: true);
+        var created = await createResp.Content.ReadFromJsonAsync<EventResponse>();
+        Assert.NotNull(created);
+
+        // Not yet visible to the public
+        var before = await _client.GetAsync($"/api/events/{created.Id}");
+        Assert.Equal(HttpStatusCode.NotFound, before.StatusCode);
+
+        // Publish
+        var publishResp = await authed.PostAsync($"/api/events/{created.Id}/publish", null);
+        Assert.Equal(HttpStatusCode.NoContent, publishResp.StatusCode);
+
+        // Now visible and status is Published
+        var after = await _client.GetAsync($"/api/events/{created.Id}");
+        Assert.Equal(HttpStatusCode.OK, after.StatusCode);
+        var ev = await after.Content.ReadFromJsonAsync<EventResponse>();
+        Assert.Equal("Published", ev!.Status);
+    }
+
+    [Fact]
+    public async Task Publish_NonDraftEvent_Returns400()
+    {
+        var token = await ApiClient.RegisterAndLoginAsync(
+            _client, "Publisher2", "publisher2@events.test", "Pass!");
+        var authed = ApiClient.WithToken(_factory, token);
+
+        // CreateEventAsync auto-publishes by default
+        var createResp = await ApiClient.CreateEventAsync(authed, "Already Published");
+        var created = await createResp.Content.ReadFromJsonAsync<EventResponse>();
+        Assert.NotNull(created);
+
+        // Trying to publish again should fail
+        var resp = await authed.PostAsync($"/api/events/{created.Id}/publish", null);
+        Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
+    }
+
+    [Fact]
+    public async Task Cancel_AutoPostsAnnouncement()
+    {
+        var token = await ApiClient.RegisterAndLoginAsync(
+            _client, "CancelAnn", "cancelann@events.test", "Pass!");
+        var authed = ApiClient.WithToken(_factory, token);
+
+        var createResp = await ApiClient.CreateEventAsync(authed, "Cancel Announce");
+        var created = await createResp.Content.ReadFromJsonAsync<EventResponse>();
+        Assert.NotNull(created);
+
+        await authed.PostAsync($"/api/events/{created.Id}/cancel", null);
+
+        var annResp = await authed.GetAsync($"/api/events/{created.Id}/announcements");
+        var announcements = await annResp.Content.ReadFromJsonAsync<List<AnnouncementResponse>>();
+        Assert.NotNull(announcements);
+        Assert.Contains(announcements, a => a.Title == "Event Cancelled");
+    }
+
+    [Fact]
+    public async Task Postpone_AutoPostsAnnouncement()
+    {
+        var token = await ApiClient.RegisterAndLoginAsync(
+            _client, "PostpAnn", "postpann@events.test", "Pass!");
+        var authed = ApiClient.WithToken(_factory, token);
+
+        var createResp = await ApiClient.CreateEventAsync(authed, "Postpone Announce");
+        var created = await createResp.Content.ReadFromJsonAsync<EventResponse>();
+        Assert.NotNull(created);
+
+        var newStart = DateTime.UtcNow.AddDays(60);
+        await authed.PostAsJsonAsync($"/api/events/{created.Id}/postpone",
+            new PostponeEventRequest(newStart, newStart.AddHours(2)));
+
+        var annResp = await authed.GetAsync($"/api/events/{created.Id}/announcements");
+        var announcements = await annResp.Content.ReadFromJsonAsync<List<AnnouncementResponse>>();
+        Assert.NotNull(announcements);
+        Assert.Contains(announcements, a => a.Title == "Event Postponed");
     }
 }

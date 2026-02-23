@@ -46,6 +46,9 @@ public class ReviewsControllerTests : IDisposable
         var ev = await createResp.Content.ReadFromJsonAsync<EventResponse>();
         Assert.NotNull(ev);
 
+        // Publish the event so attendees can book it
+        await hostClient.PostAsync($"/api/events/{ev.Id}/publish", null);
+
         // Attendee books the event
         var attendeeToken = await ApiClient.RegisterAndLoginAsync(
             _client, $"RAttendee{suffix}", $"rattendee{suffix}@rev.test", "Pass!");

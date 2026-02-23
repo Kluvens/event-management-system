@@ -405,7 +405,7 @@ public class AdminController(AppDbContext db, AuthService auth, IConfiguration c
         var suspendedUsers = await db.Users.CountAsync(u => u.IsSuspended);
 
         var totalEvents     = await db.Events.CountAsync();
-        var activeEvents    = await db.Events.CountAsync(e => !e.IsSuspended && e.Status == "Active");
+        var activeEvents    = await db.Events.CountAsync(e => !e.IsSuspended && e.Status == "Published");
         var suspendedEvents = await db.Events.CountAsync(e => e.IsSuspended);
 
         var totalBookings     = await db.Bookings.CountAsync();

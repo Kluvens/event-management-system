@@ -9,6 +9,8 @@ namespace EventManagement.Tests.Helpers;
 /// </summary>
 public static class ApiClient
 {
+    private static readonly System.Text.Json.JsonSerializerOptions CaseInsensitive =
+        new() { PropertyNameCaseInsensitive = true };
     // ── Auth ──────────────────────────────────────────────────────────
 
     public static Task<HttpResponseMessage> RegisterAsync(
@@ -69,7 +71,12 @@ public static class ApiClient
 
     // ── Events ────────────────────────────────────────────────────────
 
-    public static Task<HttpResponseMessage> CreateEventAsync(
+    /// <summary>
+    /// Creates an event and (by default) immediately publishes it.
+    /// Pass <c>draft: true</c> to skip the publish step and leave it in Draft status.
+    /// Returns the HttpResponseMessage from the create call.
+    /// </summary>
+    public static async Task<HttpResponseMessage> CreateEventAsync(
         HttpClient client,
         string title = "Test Event",
         string description = "A test event",
@@ -79,13 +86,27 @@ public static class ApiClient
         decimal price = 0m,
         bool isPublic = true,
         int categoryId = 1,
-        List<int>? tagIds = null)
+        List<int>? tagIds = null,
+        bool draft = false)
     {
         var start = DateTime.UtcNow.AddDays(daysFromNow);
-        return client.PostAsJsonAsync("/api/events", new CreateEventRequest(
+        var createResp = await client.PostAsJsonAsync("/api/events", new CreateEventRequest(
             title, description, location,
             start, start.AddHours(2),
             capacity, price, isPublic, categoryId, tagIds));
+
+        if (!draft && createResp.IsSuccessStatusCode)
+        {
+            // Read and re-wrap the content so callers can still deserialize it
+            var json = await createResp.Content.ReadAsStringAsync();
+            createResp.Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+            var ev = System.Text.Json.JsonSerializer.Deserialize<EventResponse>(json, CaseInsensitive);
+            if (ev is not null)
+                await client.PostAsync($"/api/events/{ev.Id}/publish", null);
+        }
+
+        return createResp;
     }
 
     // ── Bookings ──────────────────────────────────────────────────────

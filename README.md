@@ -23,6 +23,7 @@ A full-stack event management platform originally built as the **UNSW COMP3900**
   - [Bookings](#booking-endpoints)
   - [Reviews](#review-endpoints)
   - [Subscriptions](#subscription-endpoints)
+  - [Organizers](#organizer-endpoints)
   - [Tags](#tag-endpoints)
   - [Categories](#category-endpoints)
   - [Administration](#administration-endpoints)
@@ -34,6 +35,7 @@ A full-stack event management platform originally built as the **UNSW COMP3900**
 - [Testing](#testing)
 - [Original Team](#original-team)
 - [User Stories](docs/USER_STORIES.md)
+- [Architecture & System Design](docs/ARCHITECTURE.md)
 
 ---
 
@@ -58,21 +60,26 @@ This project was originally submitted for UNSW COMP3900 (Computer Science Projec
 | **Roles** | `Attendee` (default) · `Admin` · `SuperAdmin` |
 | **Admin** | System-wide administration panel: user management (suspend/unsuspend/role changes/loyalty adjustment), event oversight, booking inspection, category/tag management, stats dashboard |
 | **SuperAdmin** | All Admin capabilities + create SuperAdmin accounts via registration key |
-| **Suspension** | SuperAdmin can suspend users (blocks login) and events (hidden from all public access) |
+| **Suspension** | Admin can suspend users (blocks login) and events (hidden from all public access) |
 | **Events** | Create, read, update, delete with owner / admin guard |
-| **Event lifecycle** | Cancel and postpone events; status tracked as `Active`, `Cancelled`, or `Postponed` |
-| **Visibility** | Events can be public or private (only visible to the creator) |
+| **Event lifecycle** | Draft (default on create) → Publish → Live → Sold Out → Completed; Cancel and Postpone with auto-announcements; `DisplayStatus` computed from stored status + time |
+| **Visibility** | Events can be public or private; drafts only visible to owner |
 | **Pricing** | Optional ticket price per event (free events supported) |
 | **Discovery** | Search by keyword, filter by category, tags, and date range; sort by date, popularity, or price |
 | **Bookings** | Book, view own bookings, cancel (soft-delete to `Cancelled`) |
 | **Capacity** | Booking blocked when confirmed seats reach event capacity |
 | **Re-booking** | Cancelled bookings can be re-confirmed without creating a duplicate row |
+| **Check-in** | QR token generated per booking; host/admin can check in attendees by ID or scan QR token |
 | **Reviews** | Post a 1–5 star review with a comment (requires a confirmed past booking); delete own review |
 | **Review replies** | Any authenticated user can reply to a review thread |
 | **Review votes** | Like or dislike reviews; update your vote at any time |
 | **Pinned reviews** | Event host or admin can pin one review to always appear first |
 | **Event stats** | Host/admin dashboard: confirmed bookings, cancellations, occupancy %, revenue, avg. rating |
-| **Announcements** | Hosts post announcements on events; all users can read them |
+| **Organizer profile** | Public profile page: bio, website, social links, follower count, event history |
+| **Organizer dashboard** | Private stats aggregate: total events, attendees, revenue, check-ins, upcoming and recent event breakdowns |
+| **Attendee management** | Host/admin can list all attendees per event with check-in status; export to CSV |
+| **Organizer refund** | Host/admin can cancel any booking (no 7-day restriction) and deduct loyalty points |
+| **Announcements** | Hosts post announcements on events; cancel/postpone automatically posts a system announcement |
 | **Subscriptions** | Follow a host; unfollow; view your own followers as a host |
 | **Loyalty** | Points accrued per booking; five tiers with escalating discounts |
 | **Tags** | 12 predefined tags assignable to events; multi-tag filter on listing |
@@ -106,8 +113,9 @@ event-management-system/
 │   │   ├── Controllers/
 │   │   │   ├── AuthController.cs           # POST /api/auth/register|login
 │   │   │   ├── AdminController.cs          # /api/admin/* (Admin & SuperAdmin)
-│   │   │   ├── EventsController.cs         # CRUD + cancel/postpone/stats/announcements
-│   │   │   ├── BookingsController.cs       # /api/bookings
+│   │   │   ├── EventsController.cs         # CRUD + publish/cancel/postpone/stats/announcements
+│   │   │   ├── BookingsController.cs       # /api/bookings + check-in endpoints
+│   │   │   ├── OrganizersController.cs     # /api/organizers (profile, dashboard, attendees, CSV)
 │   │   │   ├── ReviewsController.cs        # /api/events/{id}/reviews (+ replies, votes, pin)
 │   │   │   ├── SubscriptionsController.cs  # /api/subscriptions
 │   │   │   ├── TagsController.cs           # GET /api/tags
@@ -120,13 +128,14 @@ event-management-system/
 │   │   │   ├── AdminDTOs.cs
 │   │   │   ├── EventDtos.cs
 │   │   │   ├── BookingDtos.cs
+│   │   │   ├── OrganizerDTOs.cs
 │   │   │   ├── ReviewDtos.cs
 │   │   │   └── AnnouncementDtos.cs
 │   │   ├── Migrations/                     # EF Core migration history
 │   │   ├── Models/
-│   │   │   ├── User.cs                     # Includes loyalty points & tier logic
-│   │   │   ├── Event.cs                    # Price, IsPublic, Status, PostponedDate
-│   │   │   ├── Booking.cs                  # PointsEarned per booking
+│   │   │   ├── User.cs                     # Loyalty points, tier logic, organizer profile fields
+│   │   │   ├── Event.cs                    # Price, IsPublic, Status (Draft/Published/…), PostponedDate
+│   │   │   ├── Booking.cs                  # PointsEarned, check-in fields (IsCheckedIn, CheckInToken)
 │   │   │   ├── Category.cs
 │   │   │   ├── Tag.cs
 │   │   │   ├── EventTag.cs                 # Many-to-many join
@@ -147,14 +156,23 @@ event-management-system/
 │       ├── Integration/
 │       │   ├── AuthControllerTests.cs
 │       │   ├── EventsControllerTests.cs
+│       │   ├── EventsControllerExtendedTests.cs     # Suspension visibility, tag/date filters
 │       │   ├── BookingsControllerTests.cs
+│       │   ├── BookingsControllerExtendedTests.cs   # Suspension guards, check-in edge cases
+│       │   ├── OrganizersControllerTests.cs
+│       │   ├── OrganizersControllerExtendedTests.cs # Dashboard split, follower counts
 │       │   ├── ReviewsControllerTests.cs
 │       │   ├── SubscriptionsControllerTests.cs
 │       │   ├── TagsAndCategoriesControllerTests.cs
+│       │   ├── AdminControllerTests.cs
+│       │   ├── AdminControllerExtendedTests.cs      # Filters, FK guards, stats fix coverage
 │       │   └── DevControllerTests.cs
 │       └── Unit/
 │           ├── Models/UserTests.cs
 │           └── Services/AuthServiceTests.cs
+├── docs/
+│   ├── ARCHITECTURE.md                              # System design & data flow
+│   └── USER_STORIES.md
 ├── swagger.json                           # Generated OpenAPI spec
 └── event-management-system.sln
 ```
@@ -265,7 +283,7 @@ Authenticate an existing user.
 
 #### `GET /api/events`
 
-List events. Unauthenticated users see only public events; authenticated users also see their own private events.
+List events. Anonymous users see only public non-draft events. Authenticated users also see their own private and draft events. Admins see everything.
 
 | Parameter | Type | Description |
 |---|---|---|
@@ -283,13 +301,25 @@ GET /api/events?search=conference&categoryId=1&tagIds=2&tagIds=7&sortBy=populari
 
 **Response `200 OK`** — array of event objects.
 
-Each event object includes: `id`, `title`, `description`, `location`, `startDate`, `endDate`, `capacity`, `bookingCount`, `price`, `isPublic`, `status`, `postponedDate`, `createdAt`, `createdById`, `createdByName`, `categoryId`, `categoryName`, `tags` (string[]).
+Each event object includes: `id`, `title`, `description`, `location`, `startDate`, `endDate`, `capacity`, `bookingCount`, `price`, `isPublic`, `status`, `displayStatus`, `postponedDate`, `createdAt`, `createdById`, `createdByName`, `categoryId`, `categoryName`, `tags` (string[]).
+
+`displayStatus` is computed at query time:
+
+| Value | Condition |
+|---|---|
+| `Draft` | Event has not been published yet |
+| `Published` | Published, upcoming, has available capacity |
+| `Live` | Published and currently in progress (`startDate ≤ now ≤ endDate`) |
+| `SoldOut` | Published, not yet started, fully booked |
+| `Completed` | Published and `endDate` has passed |
+| `Cancelled` | Event was cancelled |
+| `Postponed` | Event was postponed to new dates |
 
 ---
 
 #### `GET /api/events/{id}`
 
-Retrieve a single event by ID. Private events return `404` for non-owners.
+Retrieve a single event by ID. Draft events return `404` for non-owners. Private events return `404` for non-owners.
 
 **Response `200 OK`** — single event object.
 **Response `404 Not Found`**
@@ -321,7 +351,7 @@ Host/admin dashboard for an event.
 
 #### `POST /api/events` `[Auth]`
 
-Create a new event.
+Create a new event. The event starts as **Draft** and is not visible to the public until published.
 
 **Request body**
 ```json
@@ -339,7 +369,18 @@ Create a new event.
 }
 ```
 
-**Response `201 Created`** — the created event object.
+**Response `201 Created`** — the created event object (with `status: "Draft"`).
+
+---
+
+#### `POST /api/events/{id}/publish` `[Auth]`
+
+Publish a draft event, making it publicly visible and bookable.
+
+**Response `204 No Content`**
+**Response `400 Bad Request`** — event is not in Draft status.
+**Response `403 Forbidden`** — not the owner or admin.
+**Response `404 Not Found`**
 
 ---
 
@@ -357,7 +398,7 @@ Update an event. Only the event creator or an `Admin` can update. Tags are repla
 
 #### `POST /api/events/{id}/cancel` `[Auth]`
 
-Cancel an event. Sets `status` to `Cancelled`.
+Cancel an event. Sets `status` to `Cancelled` and automatically posts a system announcement to attendees.
 
 **Response `204 No Content`**
 **Response `400 Bad Request`** — event is already cancelled.
@@ -368,7 +409,7 @@ Cancel an event. Sets `status` to `Cancelled`.
 
 #### `POST /api/events/{id}/postpone` `[Auth]`
 
-Postpone an event to new dates. Records the original start date in `postponedDate` and sets `status` to `Postponed`.
+Postpone an event to new dates. Records the original start date in `postponedDate`, sets `status` to `Postponed`, and automatically posts a system announcement to attendees.
 
 **Request body**
 ```json
@@ -397,7 +438,7 @@ Delete an event. Only the event creator or an `Admin` can delete.
 
 #### `GET /api/events/{id}/announcements`
 
-List all announcements for an event, ordered by most recent.
+List all announcements for an event, ordered by most recent. Includes auto-generated cancellation and postponement announcements.
 
 **Response `200 OK`** — array of `{ id, eventId, eventTitle, title, message, createdAt }`.
 
@@ -438,8 +479,13 @@ List all bookings for the authenticated user, ordered by most recent.
     "eventTitle": "Tech Conference 2026",
     "eventLocation": "Sydney Convention Centre",
     "eventStartDate": "2026-07-15T09:00:00Z",
+    "eventPrice": 49.99,
     "bookedAt": "2026-03-01T10:30:00Z",
-    "status": "Confirmed"
+    "status": "Confirmed",
+    "pointsEarned": 499,
+    "isCheckedIn": false,
+    "checkedInAt": null,
+    "checkInToken": "a1b2c3d4-e5f6-..."
   }
 ]
 ```
@@ -448,15 +494,15 @@ List all bookings for the authenticated user, ordered by most recent.
 
 #### `POST /api/bookings` `[Auth]`
 
-Book a spot at an event.
+Book a spot at an event. Only **Published** (non-Draft) events can be booked. Each booking is assigned a unique `checkInToken` for QR-based check-in.
 
 **Request body**
 ```json
 { "eventId": 1 }
 ```
 
-**Response `201 Created`** — the new booking.
-**Response `400 Bad Request`** — event is fully booked.
+**Response `201 Created`** — the new booking (includes `checkInToken`).
+**Response `400 Bad Request`** — event is a draft, fully booked, or cancelled.
 **Response `404 Not Found`** — event does not exist.
 **Response `409 Conflict`** — user already has a confirmed booking for this event.
 
@@ -466,9 +512,52 @@ Book a spot at an event.
 
 #### `DELETE /api/bookings/{id}` `[Auth]`
 
-Cancel a booking (sets status to `Cancelled`). Only the booking owner can cancel.
+Cancel a booking (sets status to `Cancelled`). Only the booking owner can cancel. A 7-day cutoff rule applies unless the event itself is cancelled.
 
 **Response `204 No Content`**
+**Response `400 Bad Request`** — within 7 days of the event start.
+**Response `403 Forbidden`**
+**Response `404 Not Found`**
+
+---
+
+#### `POST /api/bookings/{id}/checkin` `[Auth]`
+
+Check in an attendee by booking ID. Only the event host or an admin can call this.
+
+**Response `204 No Content`**
+**Response `400 Bad Request`** — booking is cancelled or already checked in.
+**Response `403 Forbidden`**
+**Response `404 Not Found`**
+
+---
+
+#### `GET /api/bookings/checkin/{token}` `[Auth]`
+
+Look up booking information by QR token. Used by a host's QR scanner to preview an attendee before checking them in.
+
+**Response `200 OK`**
+```json
+{
+  "bookingId": 5,
+  "userId": 12,
+  "attendeeName": "Bob Attendee",
+  "eventTitle": "Tech Conference 2026",
+  "isCheckedIn": false,
+  "checkedInAt": null
+}
+```
+
+**Response `404 Not Found`** — token not found.
+
+---
+
+#### `POST /api/bookings/checkin/{token}` `[Auth]`
+
+Check in an attendee via their QR token. Only the event host or an admin can call this.
+
+**Response `204 No Content`**
+**Response `400 Bad Request`** — booking is cancelled or already checked in.
 **Response `403 Forbidden`**
 **Response `404 Not Found`**
 
@@ -616,6 +705,130 @@ Unfollow a host.
 View the users who follow you (your subscribers as a host), ordered by name.
 
 **Response `200 OK`** — array of `{ subscriberId, name, subscribedAt }`.
+
+---
+
+### Organizer Endpoints
+
+Endpoints for organizer public profiles, private dashboards, and attendee management.
+
+#### `GET /api/organizers/{id}`
+
+View a public organizer profile. Returns the organizer's bio, social links, follower count, and their list of published/live/completed events.
+
+**Response `200 OK`**
+```json
+{
+  "id": 2,
+  "name": "Alice Host",
+  "bio": "I run tech events across Sydney.",
+  "website": "https://alicehost.com",
+  "twitterHandle": "@alicehost",
+  "instagramHandle": "@alicehost",
+  "followerCount": 312,
+  "memberSince": "2025-01-15T00:00:00Z",
+  "events": [
+    {
+      "id": 1,
+      "title": "Tech Conference 2026",
+      "displayStatus": "Published",
+      "startDate": "2026-07-15T09:00:00Z",
+      "confirmedBookings": 45,
+      "capacity": 200
+    }
+  ]
+}
+```
+
+**Response `404 Not Found`**
+
+---
+
+#### `GET /api/organizers/me/dashboard` `[Auth]`
+
+Private organizer dashboard with aggregate stats across all owned events, plus upcoming and recent event breakdowns.
+
+**Response `200 OK`**
+```json
+{
+  "totalEvents": 8,
+  "totalAttendees": 340,
+  "totalRevenue": 16990.60,
+  "totalCheckedIn": 205,
+  "upcomingEvents": [...],
+  "recentEvents": [...]
+}
+```
+
+Each event entry in the lists includes: `eventId`, `title`, `displayStatus`, `startDate`, `confirmedBookings`, `capacity`, `revenue`, `checkedIn`.
+
+**Response `401 Unauthorized`**
+
+---
+
+#### `PUT /api/organizers/me/profile` `[Auth]`
+
+Update your organizer profile. Only non-null fields are updated (PATCH semantics).
+
+**Request body**
+```json
+{
+  "bio": "Running tech events since 2022.",
+  "website": "https://mysite.com",
+  "twitterHandle": "@myhandle",
+  "instagramHandle": null
+}
+```
+
+**Response `204 No Content`**
+
+---
+
+#### `GET /api/organizers/me/events/{eventId}/attendees` `[Auth]`
+
+List all attendees (confirmed and cancelled) for one of your events, including check-in status and QR token.
+
+**Response `200 OK`**
+```json
+[
+  {
+    "bookingId": 5,
+    "userId": 12,
+    "name": "Bob Attendee",
+    "email": "bob@example.com",
+    "bookedAt": "2026-03-01T10:30:00Z",
+    "bookingStatus": "Confirmed",
+    "isCheckedIn": true,
+    "checkedInAt": "2026-07-15T09:14:00Z",
+    "checkInToken": "a1b2c3d4-e5f6-..."
+  }
+]
+```
+
+**Response `403 Forbidden`** — not the event owner or admin.
+**Response `404 Not Found`**
+
+---
+
+#### `GET /api/organizers/me/events/{eventId}/attendees/export` `[Auth]`
+
+Export the attendee list for an event as a CSV file.
+
+**Response `200 OK`** — `text/csv` with headers `BookingId,Name,Email,BookedAt,Status,CheckedIn,CheckedInAt`.
+
+**Response `403 Forbidden`**
+**Response `404 Not Found`**
+
+---
+
+#### `DELETE /api/organizers/me/events/{eventId}/bookings/{bookingId}` `[Auth]`
+
+Organizer-initiated refund: cancel any booking for your event regardless of the 7-day rule. Loyalty points earned from the booking are deducted from the attendee's account.
+
+**Response `204 No Content`**
+**Response `400 Bad Request`** — booking is already cancelled.
+**Response `403 Forbidden`**
+**Response `404 Not Found`**
 
 ---
 
@@ -772,7 +985,7 @@ Add or deduct loyalty points. Use a positive `delta` to add, negative to deduct.
 
 #### `GET /api/admin/events` `[Admin]`
 
-List **all** events: every status (`Active`, `Cancelled`, `Postponed`), every visibility (`public` and `private`), and including suspended events.
+List **all** events: every status (`Draft`, `Published`, `Cancelled`, `Postponed`), every visibility (`public` and `private`), and including suspended events.
 
 | Parameter | Type | Description |
 |---|---|---|
@@ -958,14 +1171,18 @@ Tier and discount are computed properties on the `User` model and returned with 
 
 ```
 Users
-  id             INTEGER PK
-  name           TEXT
-  email          TEXT UNIQUE
-  passwordHash   TEXT
-  role           TEXT      ("Attendee" | "Admin" | "SuperAdmin")
-  isSuspended    BOOLEAN
-  loyaltyPoints  INTEGER
-  createdAt      DATETIME
+  id               INTEGER PK
+  name             TEXT
+  email            TEXT UNIQUE
+  passwordHash     TEXT
+  role             TEXT      ("Attendee" | "Admin" | "SuperAdmin")
+  isSuspended      BOOLEAN
+  loyaltyPoints    INTEGER
+  createdAt        DATETIME
+  bio              TEXT nullable
+  website          TEXT nullable
+  twitterHandle    TEXT nullable
+  instagramHandle  TEXT nullable
 
 Categories
   id    INTEGER PK
@@ -985,7 +1202,7 @@ Events
   capacity      INTEGER
   price         DECIMAL(18,2)
   isPublic      BOOLEAN
-  status        TEXT      ("Active" | "Cancelled" | "Postponed")
+  status        TEXT      ("Draft" | "Published" | "Cancelled" | "Postponed")
   isSuspended   BOOLEAN
   postponedDate DATETIME nullable
   createdAt     DATETIME
@@ -1002,6 +1219,9 @@ Bookings
   bookedAt      DATETIME
   status        TEXT  ("Confirmed" | "Cancelled")
   pointsEarned  INTEGER
+  isCheckedIn   BOOLEAN
+  checkedInAt   DATETIME nullable
+  checkInToken  TEXT nullable UNIQUE
   userId        INTEGER FK → Users.id
   eventId       INTEGER FK → Events.id
   UNIQUE (userId, eventId)
@@ -1075,19 +1295,19 @@ Migrations are managed by EF Core and applied automatically at startup.
 
 ## Testing
 
-The test suite uses **xUnit** with `Microsoft.AspNetCore.Mvc.Testing` to spin up a real in-process server backed by an SQLite in-memory database.
+The test suite uses **xUnit** with `Microsoft.AspNetCore.Mvc.Testing` to spin up a real in-process server backed by an SQLite in-memory database. **223 tests, all passing.**
 
 ```bash
 cd backend/EventManagement.Tests
 dotnet test
 ```
 
-111 tests across two categories:
-
 | Category | Scope |
 |---|---|
 | **Unit** | `User` model loyalty tier/discount logic; `AuthService` register & login paths |
-| **Integration** | Full HTTP round-trips for Auth, Events, Bookings, Reviews, Subscriptions, Tags & Categories, Dev utilities |
+| **Integration** | Full HTTP round-trips for Auth, Events (draft/publish lifecycle, suspension visibility, tag/date/popularity filters), Bookings (check-in, loyalty, suspended-user/event guards, QR token), Organizers (profile follower counts, dashboard splits, CSV export), Reviews (sorting, pinning, replies, votes), Subscriptions, Tags & Categories, Admin panel (user/event/booking filters, FK guards, stats), Dev utilities |
+
+Each test class creates its own isolated `CustomWebApplicationFactory` instance with a fresh in-memory SQLite database, ensuring no test state leaks between classes.
 
 ---
 

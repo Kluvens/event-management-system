@@ -45,6 +45,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .HasIndex(b => new { b.UserId, b.EventId })
             .IsUnique();
 
+        modelBuilder.Entity<Booking>()
+            .HasIndex(b => b.CheckInToken)
+            .IsUnique();
+
         // ── EventTag (many-to-many join) ───────────────────────────
         modelBuilder.Entity<EventTag>()
             .HasKey(et => new { et.EventId, et.TagId });

@@ -11,6 +11,12 @@ public class User
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public int LoyaltyPoints { get; set; } = 0;
 
+    // Organizer profile
+    public string? Bio { get; set; }
+    public string? Website { get; set; }
+    public string? TwitterHandle { get; set; }
+    public string? InstagramHandle { get; set; }
+
     public string LoyaltyTier => LoyaltyPoints switch
     {
         >= 50000 => "Elite",

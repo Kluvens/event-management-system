@@ -11,5 +11,8 @@ public record BookingResponse(
     decimal EventPrice,
     DateTime BookedAt,
     string Status,
-    int PointsEarned
+    int PointsEarned,
+    bool IsCheckedIn,
+    DateTime? CheckedInAt,
+    string? CheckInToken
 );

@@ -8,6 +8,11 @@ public class Booking
     public string Status { get; set; } = "Confirmed";
     public int PointsEarned { get; set; } = 0;
 
+    // Check-in
+    public bool IsCheckedIn { get; set; } = false;
+    public DateTime? CheckedInAt { get; set; }
+    public string? CheckInToken { get; set; }  // UUID, generated on create
+
     public int UserId { get; set; }
     public User User { get; set; } = null!;
 

@@ -17,11 +17,13 @@ public class EventsController(AppDbContext db) : ControllerBase
     private const string StatusConfirmed = "Confirmed";
     private const string StatusCancelled = "Cancelled";
     private const string StatusPostponed = "Postponed";
+    private const string StatusDraft     = "Draft";
+    private const string StatusPublished = "Published";
 
     // ── List ───────────────────────────────────────────────────────
 
     /// <summary>
-    /// List events. Anonymous users see only public events.
+    /// List events. Anonymous users see only public non-draft events.
     /// sortBy: date (default) | popularity | price
     /// </summary>
     [HttpGet]
@@ -38,6 +40,8 @@ public class EventsController(AppDbContext db) : ControllerBase
         var role         = User.FindFirstValue(ClaimTypes.Role);
         var isSuperAdmin = role == RoleSuperAdmin;
 
+        var isAdmin = role is RoleAdmin or RoleSuperAdmin;
+
         var query = db.Events
             .Include(e => e.CreatedBy)
             .Include(e => e.Category)
@@ -45,17 +49,7 @@ public class EventsController(AppDbContext db) : ControllerBase
             .Include(e => e.EventTags).ThenInclude(et => et.Tag)
             .AsQueryable();
 
-        // Suspended events are invisible to everyone except SuperAdmin
-        if (!isSuperAdmin)
-            query = query.Where(e => !e.IsSuspended);
-
-        // Visibility: SuperAdmin/Admin see all; authenticated → public + own private; anonymous → public only
-        if (!isSuperAdmin && role != RoleAdmin)
-        {
-            query = userId.HasValue
-                ? query.Where(e => e.IsPublic || e.CreatedById == userId.Value)
-                : query.Where(e => e.IsPublic);
-        }
+        query = ApplyVisibilityFilter(query, userId, isAdmin, isSuperAdmin);
 
         if (!string.IsNullOrWhiteSpace(search))
             query = query.Where(e =>
@@ -110,6 +104,7 @@ public class EventsController(AppDbContext db) : ControllerBase
         if (ev is null) return NotFound();
         if (ev.IsSuspended && !isSuperAdmin) return NotFound();
         if (!ev.IsPublic && ev.CreatedById != userId && !isAdmin && !isSuperAdmin) return NotFound();
+        if (ev.Status == StatusDraft && ev.CreatedById != userId && !isAdmin && !isSuperAdmin) return NotFound();
 
         return Ok(ToResponse(ev));
     }
@@ -178,6 +173,26 @@ public class EventsController(AppDbContext db) : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = ev.Id }, ToResponse(ev));
     }
 
+    // ── Publish ────────────────────────────────────────────────────
+
+    [Authorize]
+    [HttpPost("{id}/publish")]
+    public async Task<IActionResult> Publish(int id)
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var role   = User.FindFirstValue(ClaimTypes.Role);
+
+        var ev = await db.Events.FindAsync(id);
+        if (ev is null) return NotFound();
+        if (ev.CreatedById != userId && role != RoleAdmin && role != RoleSuperAdmin) return Forbid();
+        if (ev.Status != StatusDraft)
+            return BadRequest(new { message = "Only Draft events can be published." });
+
+        ev.Status = StatusPublished;
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
     // ── Update ─────────────────────────────────────────────────────
 
     [Authorize]
@@ -225,6 +240,15 @@ public class EventsController(AppDbContext db) : ControllerBase
 
         ev.Status = StatusCancelled;
         await db.SaveChangesAsync();
+
+        db.Announcements.Add(new Announcement
+        {
+            EventId = id,
+            Title   = "Event Cancelled",
+            Message = $"{ev.Title} has been cancelled."
+        });
+        await db.SaveChangesAsync();
+
         return NoContent();
     }
 
@@ -248,6 +272,15 @@ public class EventsController(AppDbContext db) : ControllerBase
         ev.EndDate       = req.NewEndDate;
         ev.Status        = StatusPostponed;
         await db.SaveChangesAsync();
+
+        db.Announcements.Add(new Announcement
+        {
+            EventId = id,
+            Title   = "Event Postponed",
+            Message = $"{ev.Title} has been moved to {req.NewStartDate:MMM dd yyyy}."
+        });
+        await db.SaveChangesAsync();
+
         return NoContent();
     }
 
@@ -315,6 +348,27 @@ public class EventsController(AppDbContext db) : ControllerBase
 
     // ── Helpers ────────────────────────────────────────────────────
 
+    private static IQueryable<Event> ApplyVisibilityFilter(
+        IQueryable<Event> query, int? userId, bool isAdmin, bool isSuperAdmin)
+    {
+        if (!isSuperAdmin)
+            query = query.Where(e => !e.IsSuspended);
+
+        if (isAdmin) return query;
+
+        // Private events are only visible to their owner
+        query = userId.HasValue
+            ? query.Where(e => e.IsPublic || e.CreatedById == userId.Value)
+            : query.Where(e => e.IsPublic);
+
+        // Draft events are only visible to their owner
+        query = userId.HasValue
+            ? query.Where(e => e.Status != StatusDraft || e.CreatedById == userId.Value)
+            : query.Where(e => e.Status != StatusDraft);
+
+        return query;
+    }
+
     private async Task ApplyTagsAsync(int eventId, List<int>? tagIds)
     {
         if (tagIds is null or { Count: 0 }) return;
@@ -328,12 +382,28 @@ public class EventsController(AppDbContext db) : ControllerBase
         await db.SaveChangesAsync();
     }
 
-    private static EventResponse ToResponse(Event e) => new(
-        e.Id, e.Title, e.Description, e.Location,
-        e.StartDate, e.EndDate, e.Capacity,
-        e.Bookings.Count(b => b.Status == StatusConfirmed),
-        e.Price, e.IsPublic, e.Status, e.PostponedDate,
-        e.CreatedAt, e.CreatedById, e.CreatedBy.Name,
-        e.CategoryId, e.Category.Name,
-        e.EventTags.Select(et => et.Tag.Name).ToList());
+    private static string ComputeDisplayStatus(Event e, int confirmedCount)
+    {
+        if (e.Status is StatusDraft or StatusCancelled or StatusPostponed) return e.Status;
+        var now = DateTime.UtcNow;
+        if (e.EndDate < now)              return "Completed";
+        if (e.StartDate <= now)           return "Live";
+        if (confirmedCount >= e.Capacity) return "SoldOut";
+        return "Published";
+    }
+
+    private static EventResponse ToResponse(Event e)
+    {
+        var confirmed = e.Bookings.Count(b => b.Status == StatusConfirmed);
+        return new EventResponse(
+            e.Id, e.Title, e.Description, e.Location,
+            e.StartDate, e.EndDate, e.Capacity,
+            confirmed,
+            e.Price, e.IsPublic, e.Status,
+            ComputeDisplayStatus(e, confirmed),
+            e.PostponedDate,
+            e.CreatedAt, e.CreatedById, e.CreatedBy.Name,
+            e.CategoryId, e.Category.Name,
+            e.EventTags.Select(et => et.Tag.Name).ToList());
+    }
 }

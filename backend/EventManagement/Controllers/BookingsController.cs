@@ -15,6 +15,7 @@ public class BookingsController(AppDbContext db) : ControllerBase
 {
     private const string StatusConfirmed = "Confirmed";
     private const string StatusCancelled = "Cancelled";
+    private const string StatusDraft     = "Draft";
 
     // ── My bookings ────────────────────────────────────────────────
 
@@ -30,7 +31,8 @@ public class BookingsController(AppDbContext db) : ControllerBase
             .Select(b => new BookingResponse(
                 b.Id, b.EventId, b.Event.Title, b.Event.Location,
                 b.Event.StartDate, b.Event.Price,
-                b.BookedAt, b.Status, b.PointsEarned))
+                b.BookedAt, b.Status, b.PointsEarned,
+                b.IsCheckedIn, b.CheckedInAt, b.CheckInToken))
             .ToListAsync();
 
         return Ok(bookings);
@@ -50,6 +52,8 @@ public class BookingsController(AppDbContext db) : ControllerBase
         if (ev is null) return NotFound(new { message = "Event not found." });
         if (ev.IsSuspended)
             return BadRequest(new { message = "This event is currently unavailable." });
+        if (ev.Status == StatusDraft)
+            return BadRequest(new { message = "Cannot book a draft event." });
         if (ev.Status == StatusCancelled)
             return BadRequest(new { message = "Event has been cancelled." });
 
@@ -73,9 +77,10 @@ public class BookingsController(AppDbContext db) : ControllerBase
                 return Conflict(new { message = "You already have a booking for this event." });
 
             // Re-activate a cancelled booking
-            existing.Status   = StatusConfirmed;
-            existing.BookedAt = DateTime.UtcNow;
+            existing.Status       = StatusConfirmed;
+            existing.BookedAt     = DateTime.UtcNow;
             existing.PointsEarned = pointsEarned;
+            existing.CheckInToken ??= Guid.NewGuid().ToString();
             user.LoyaltyPoints += pointsEarned;
             await db.SaveChangesAsync();
 
@@ -86,7 +91,8 @@ public class BookingsController(AppDbContext db) : ControllerBase
         {
             UserId       = userId,
             EventId      = req.EventId,
-            PointsEarned = pointsEarned
+            PointsEarned = pointsEarned,
+            CheckInToken = Guid.NewGuid().ToString()
         };
 
         user.LoyaltyPoints += pointsEarned;
@@ -163,9 +169,78 @@ public class BookingsController(AppDbContext db) : ControllerBase
         return NoContent();
     }
 
+    // ── Check-in by booking ID ──────────────────────────────────────
+
+    [HttpPost("{id}/checkin")]
+    public async Task<IActionResult> CheckIn(int id)
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var role   = User.FindFirstValue(ClaimTypes.Role);
+
+        var booking = await db.Bookings.Include(b => b.Event).FirstOrDefaultAsync(b => b.Id == id);
+        if (booking is null) return NotFound();
+
+        if (booking.Event.CreatedById != userId && role != "Admin" && role != "SuperAdmin")
+            return Forbid();
+
+        if (booking.Status == StatusCancelled)
+            return BadRequest(new { message = "Cannot check in a cancelled booking." });
+        if (booking.IsCheckedIn)
+            return BadRequest(new { message = "Already checked in." });
+
+        booking.IsCheckedIn = true;
+        booking.CheckedInAt = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    // ── Check-in via QR token ──────────────────────────────────────
+
+    [HttpGet("checkin/{token}")]
+    public async Task<IActionResult> GetCheckinInfo(string token)
+    {
+        var booking = await db.Bookings
+            .Include(b => b.User)
+            .Include(b => b.Event)
+            .FirstOrDefaultAsync(b => b.CheckInToken == token);
+
+        if (booking is null) return NotFound();
+
+        return Ok(new CheckInInfo(
+            booking.Id, booking.UserId, booking.User.Name,
+            booking.Event.Title, booking.IsCheckedIn, booking.CheckedInAt));
+    }
+
+    [HttpPost("checkin/{token}")]
+    public async Task<IActionResult> CheckInViaToken(string token)
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var role   = User.FindFirstValue(ClaimTypes.Role);
+
+        var booking = await db.Bookings
+            .Include(b => b.Event)
+            .FirstOrDefaultAsync(b => b.CheckInToken == token);
+
+        if (booking is null) return NotFound();
+
+        if (booking.Event.CreatedById != userId && role != "Admin" && role != "SuperAdmin")
+            return Forbid();
+
+        if (booking.Status == StatusCancelled)
+            return BadRequest(new { message = "Cannot check in a cancelled booking." });
+        if (booking.IsCheckedIn)
+            return BadRequest(new { message = "Already checked in." });
+
+        booking.IsCheckedIn = true;
+        booking.CheckedInAt = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
     // ── Helper ─────────────────────────────────────────────────────
 
     private static BookingResponse ToResponse(Booking b, Event ev) => new(
         b.Id, ev.Id, ev.Title, ev.Location, ev.StartDate,
-        ev.Price, b.BookedAt, b.Status, b.PointsEarned);
+        ev.Price, b.BookedAt, b.Status, b.PointsEarned,
+        b.IsCheckedIn, b.CheckedInAt, b.CheckInToken);
 }

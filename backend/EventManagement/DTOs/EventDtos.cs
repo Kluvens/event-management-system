@@ -40,6 +40,7 @@ public record EventResponse(
     decimal Price,
     bool IsPublic,
     string Status,
+    string DisplayStatus,
     DateTime? PostponedDate,
     DateTime CreatedAt,
     int CreatedById,
