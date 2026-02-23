@@ -13,6 +13,7 @@ namespace EventManagement.Controllers;
 public class AdminController(AppDbContext db, AuthService auth, IConfiguration config) : ControllerBase
 {
     private const string RoleSuperAdmin = "SuperAdmin";
+    private const string RoleAdmins     = "Admin,SuperAdmin";
     private const string StatusConfirmed = "Confirmed";
 
     // ── Registration ───────────────────────────────────────────────
@@ -42,7 +43,7 @@ public class AdminController(AppDbContext db, AuthService auth, IConfiguration c
     /// <summary>
     /// List all users. Optional filters: search (name/email), role, isSuspended.
     /// </summary>
-    [Authorize(Roles = RoleSuperAdmin)]
+    [Authorize(Roles = RoleAdmins)]
     [HttpGet("users")]
     public async Task<IActionResult> GetUsers(
         [FromQuery] string? search,
@@ -78,7 +79,7 @@ public class AdminController(AppDbContext db, AuthService auth, IConfiguration c
     /// <summary>
     /// Get detailed profile for a single user including recent activity.
     /// </summary>
-    [Authorize(Roles = RoleSuperAdmin)]
+    [Authorize(Roles = RoleAdmins)]
     [HttpGet("users/{id:int}")]
     public async Task<IActionResult> GetUser(int id)
     {
@@ -114,7 +115,7 @@ public class AdminController(AppDbContext db, AuthService auth, IConfiguration c
     /// <summary>
     /// Suspend a user. Suspended users cannot log in.
     /// </summary>
-    [Authorize(Roles = RoleSuperAdmin)]
+    [Authorize(Roles = RoleAdmins)]
     [HttpPost("users/{id:int}/suspend")]
     public async Task<IActionResult> SuspendUser(int id)
     {
@@ -131,7 +132,7 @@ public class AdminController(AppDbContext db, AuthService auth, IConfiguration c
     /// <summary>
     /// Unsuspend a user, restoring their ability to log in.
     /// </summary>
-    [Authorize(Roles = RoleSuperAdmin)]
+    [Authorize(Roles = RoleAdmins)]
     [HttpPost("users/{id:int}/unsuspend")]
     public async Task<IActionResult> UnsuspendUser(int id)
     {
@@ -147,7 +148,7 @@ public class AdminController(AppDbContext db, AuthService auth, IConfiguration c
     /// Change a user's role. Valid roles: "Attendee", "Admin".
     /// SuperAdmins cannot be demoted via this endpoint.
     /// </summary>
-    [Authorize(Roles = RoleSuperAdmin)]
+    [Authorize(Roles = RoleAdmins)]
     [HttpPut("users/{id:int}/role")]
     public async Task<IActionResult> ChangeRole(int id, ChangeRoleRequest req)
     {
@@ -167,7 +168,7 @@ public class AdminController(AppDbContext db, AuthService auth, IConfiguration c
     /// <summary>
     /// Adjust a user's loyalty points by a delta (positive to add, negative to deduct).
     /// </summary>
-    [Authorize(Roles = RoleSuperAdmin)]
+    [Authorize(Roles = RoleAdmins)]
     [HttpPost("users/{id:int}/adjust-points")]
     public async Task<IActionResult> AdjustPoints(int id, AdjustPointsRequest req)
     {
@@ -185,7 +186,7 @@ public class AdminController(AppDbContext db, AuthService auth, IConfiguration c
     /// List ALL events regardless of visibility, status, or suspension.
     /// Optional filters: search, isSuspended, status.
     /// </summary>
-    [Authorize(Roles = RoleSuperAdmin)]
+    [Authorize(Roles = RoleAdmins)]
     [HttpGet("events")]
     public async Task<IActionResult> GetEvents(
         [FromQuery] string? search,
@@ -223,7 +224,7 @@ public class AdminController(AppDbContext db, AuthService auth, IConfiguration c
     /// <summary>
     /// Suspend an event. Suspended events are hidden from all public listings and cannot be booked.
     /// </summary>
-    [Authorize(Roles = RoleSuperAdmin)]
+    [Authorize(Roles = RoleAdmins)]
     [HttpPost("events/{id:int}/suspend")]
     public async Task<IActionResult> SuspendEvent(int id)
     {
@@ -238,7 +239,7 @@ public class AdminController(AppDbContext db, AuthService auth, IConfiguration c
     /// <summary>
     /// Unsuspend an event, making it visible and bookable again.
     /// </summary>
-    [Authorize(Roles = RoleSuperAdmin)]
+    [Authorize(Roles = RoleAdmins)]
     [HttpPost("events/{id:int}/unsuspend")]
     public async Task<IActionResult> UnsuspendEvent(int id)
     {
@@ -255,7 +256,7 @@ public class AdminController(AppDbContext db, AuthService auth, IConfiguration c
     /// <summary>
     /// List all bookings system-wide. Optional filters: userId, eventId, status.
     /// </summary>
-    [Authorize(Roles = RoleSuperAdmin)]
+    [Authorize(Roles = RoleAdmins)]
     [HttpGet("bookings")]
     public async Task<IActionResult> GetBookings(
         [FromQuery] int? userId,
@@ -292,7 +293,7 @@ public class AdminController(AppDbContext db, AuthService auth, IConfiguration c
     /// <summary>
     /// Create a new event category.
     /// </summary>
-    [Authorize(Roles = RoleSuperAdmin)]
+    [Authorize(Roles = RoleAdmins)]
     [HttpPost("categories")]
     public async Task<IActionResult> CreateCategory(CreateCategoryRequest req)
     {
@@ -313,7 +314,7 @@ public class AdminController(AppDbContext db, AuthService auth, IConfiguration c
     /// <summary>
     /// Update a category's name.
     /// </summary>
-    [Authorize(Roles = RoleSuperAdmin)]
+    [Authorize(Roles = RoleAdmins)]
     [HttpPut("categories/{id:int}")]
     public async Task<IActionResult> UpdateCategory(int id, UpdateCategoryRequest req)
     {
@@ -334,7 +335,7 @@ public class AdminController(AppDbContext db, AuthService auth, IConfiguration c
     /// <summary>
     /// Delete a category. Blocked if any events currently use it.
     /// </summary>
-    [Authorize(Roles = RoleSuperAdmin)]
+    [Authorize(Roles = RoleAdmins)]
     [HttpDelete("categories/{id:int}")]
     public async Task<IActionResult> DeleteCategory(int id)
     {
@@ -354,7 +355,7 @@ public class AdminController(AppDbContext db, AuthService auth, IConfiguration c
     /// <summary>
     /// Create a new tag.
     /// </summary>
-    [Authorize(Roles = RoleSuperAdmin)]
+    [Authorize(Roles = RoleAdmins)]
     [HttpPost("tags")]
     public async Task<IActionResult> CreateTag(CreateTagRequest req)
     {
@@ -375,7 +376,7 @@ public class AdminController(AppDbContext db, AuthService auth, IConfiguration c
     /// <summary>
     /// Delete a tag. Also removes all event-tag associations.
     /// </summary>
-    [Authorize(Roles = RoleSuperAdmin)]
+    [Authorize(Roles = RoleAdmins)]
     [HttpDelete("tags/{id:int}")]
     public async Task<IActionResult> DeleteTag(int id)
     {
@@ -395,7 +396,7 @@ public class AdminController(AppDbContext db, AuthService auth, IConfiguration c
     /// <summary>
     /// System-wide statistics dashboard.
     /// </summary>
-    [Authorize(Roles = RoleSuperAdmin)]
+    [Authorize(Roles = RoleAdmins)]
     [HttpGet("stats")]
     public async Task<IActionResult> GetStats()
     {

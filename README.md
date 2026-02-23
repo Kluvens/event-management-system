@@ -25,7 +25,7 @@ A full-stack event management platform originally built as the **UNSW COMP3900**
   - [Subscriptions](#subscription-endpoints)
   - [Tags](#tag-endpoints)
   - [Categories](#category-endpoints)
-  - [Super Administrator](#super-administrator-endpoints)
+  - [Administration](#administration-endpoints)
   - [Dev Utilities](#dev-utility-endpoints)
 - [Authentication Flow](#authentication-flow)
 - [Loyalty Programme](#loyalty-programme)
@@ -33,6 +33,7 @@ A full-stack event management platform originally built as the **UNSW COMP3900**
 - [Seeded Data](#seeded-data)
 - [Testing](#testing)
 - [Original Team](#original-team)
+- [User Stories](docs/USER_STORIES.md)
 
 ---
 
@@ -55,7 +56,8 @@ This project was originally submitted for UNSW COMP3900 (Computer Science Projec
 |---|---|
 | **Auth** | Register, login, JWT access tokens (7-day expiry) |
 | **Roles** | `Attendee` (default) · `Admin` · `SuperAdmin` |
-| **Super Admin** | System-wide admin panel: user management, event oversight, booking inspection, category/tag management, stats dashboard |
+| **Admin** | System-wide administration panel: user management (suspend/unsuspend/role changes/loyalty adjustment), event oversight, booking inspection, category/tag management, stats dashboard |
+| **SuperAdmin** | All Admin capabilities + create SuperAdmin accounts via registration key |
 | **Suspension** | SuperAdmin can suspend users (blocks login) and events (hidden from all public access) |
 | **Events** | Create, read, update, delete with owner / admin guard |
 | **Event lifecycle** | Cancel and postpone events; status tracked as `Active`, `Cancelled`, or `Postponed` |
@@ -76,7 +78,7 @@ This project was originally submitted for UNSW COMP3900 (Computer Science Projec
 | **Tags** | 12 predefined tags assignable to events; multi-tag filter on listing |
 | **Categories** | Seeded: Conference, Workshop, Concert, Sports, Networking, Other |
 | **Swagger UI** | Interactive docs served at `/` with JWT auth support |
-| **Dev tools** | Reset all data or seed a minimal sample dataset (Development environment only) |
+| **Dev tools** | Reset all data or seed a minimal sample dataset (Development environment only, Admin/SuperAdmin auth required) |
 
 ---
 
@@ -103,7 +105,7 @@ event-management-system/
 │   ├── EventManagement/
 │   │   ├── Controllers/
 │   │   │   ├── AuthController.cs           # POST /api/auth/register|login
-│   │   │   ├── AdminController.cs          # /api/admin/* (SuperAdmin only)
+│   │   │   ├── AdminController.cs          # /api/admin/* (Admin & SuperAdmin)
 │   │   │   ├── EventsController.cs         # CRUD + cancel/postpone/stats/announcements
 │   │   │   ├── BookingsController.cs       # /api/bookings
 │   │   │   ├── ReviewsController.cs        # /api/events/{id}/reviews (+ replies, votes, pin)
@@ -663,16 +665,17 @@ Return all event categories.
 
 ---
 
-### Super Administrator Endpoints
+### Administration Endpoints
 
-A `SuperAdmin` sits above all other roles and has system-wide access. All endpoints in this section (except registration) require a `SuperAdmin` JWT.
+All endpoints in this section (except `/register`) accept an `Admin` or `SuperAdmin` JWT — the `[Admin]` label below means both roles are accepted. The `/register` endpoint is key-protected and open to unauthenticated callers; it is the only way to create a `SuperAdmin` account.
 
 #### Role hierarchy
 
 ```
 Attendee  →  can book, review, follow hosts, create events
-Admin     →  all of the above + can manage any event (not just own)
-SuperAdmin→  all of the above + full system administration panel
+Admin     →  all of the above + full system administration panel
+             (user/event/booking management, categories, tags, stats, loyalty adjustments)
+SuperAdmin→  all of the above + create SuperAdmin accounts via registration key
 ```
 
 ---
@@ -697,7 +700,7 @@ Create a `SuperAdmin` account. Protected by the `AdminSettings:RegistrationKey` 
 
 ---
 
-#### `GET /api/admin/users` `[SuperAdmin]`
+#### `GET /api/admin/users` `[Admin]`
 
 List all users in the system.
 
@@ -711,7 +714,7 @@ List all users in the system.
 
 ---
 
-#### `GET /api/admin/users/{id}` `[SuperAdmin]`
+#### `GET /api/admin/users/{id}` `[Admin]`
 
 Full user profile plus up to 10 recent bookings and 10 recent events.
 
@@ -720,7 +723,7 @@ Full user profile plus up to 10 recent bookings and 10 recent events.
 
 ---
 
-#### `POST /api/admin/users/{id}/suspend` `[SuperAdmin]`
+#### `POST /api/admin/users/{id}/suspend` `[Admin]`
 
 Suspend a user. Suspended users receive `"Your account has been suspended"` on next login attempt. Cannot suspend another `SuperAdmin`.
 
@@ -730,7 +733,7 @@ Suspend a user. Suspended users receive `"Your account has been suspended"` on n
 
 ---
 
-#### `POST /api/admin/users/{id}/unsuspend` `[SuperAdmin]`
+#### `POST /api/admin/users/{id}/unsuspend` `[Admin]`
 
 Restore a suspended user's access.
 
@@ -739,7 +742,7 @@ Restore a suspended user's access.
 
 ---
 
-#### `PUT /api/admin/users/{id}/role` `[SuperAdmin]`
+#### `PUT /api/admin/users/{id}/role` `[Admin]`
 
 Promote or demote a user's role between `Attendee` and `Admin`. Cannot change a `SuperAdmin`'s role.
 
@@ -754,7 +757,7 @@ Promote or demote a user's role between `Attendee` and `Admin`. Cannot change a 
 
 ---
 
-#### `POST /api/admin/users/{id}/adjust-points` `[SuperAdmin]`
+#### `POST /api/admin/users/{id}/adjust-points` `[Admin]`
 
 Add or deduct loyalty points. Use a positive `delta` to add, negative to deduct. Points floor at 0.
 
@@ -767,7 +770,7 @@ Add or deduct loyalty points. Use a positive `delta` to add, negative to deduct.
 
 ---
 
-#### `GET /api/admin/events` `[SuperAdmin]`
+#### `GET /api/admin/events` `[Admin]`
 
 List **all** events: every status (`Active`, `Cancelled`, `Postponed`), every visibility (`public` and `private`), and including suspended events.
 
@@ -781,7 +784,7 @@ List **all** events: every status (`Active`, `Cancelled`, `Postponed`), every vi
 
 ---
 
-#### `POST /api/admin/events/{id}/suspend` `[SuperAdmin]`
+#### `POST /api/admin/events/{id}/suspend` `[Admin]`
 
 Suspend an event. Suspended events are hidden from all public listings and cannot be booked.
 
@@ -790,7 +793,7 @@ Suspend an event. Suspended events are hidden from all public listings and canno
 
 ---
 
-#### `POST /api/admin/events/{id}/unsuspend` `[SuperAdmin]`
+#### `POST /api/admin/events/{id}/unsuspend` `[Admin]`
 
 Restore a suspended event to public visibility.
 
@@ -799,7 +802,7 @@ Restore a suspended event to public visibility.
 
 ---
 
-#### `GET /api/admin/bookings` `[SuperAdmin]`
+#### `GET /api/admin/bookings` `[Admin]`
 
 List all bookings across the entire system.
 
@@ -813,7 +816,7 @@ List all bookings across the entire system.
 
 ---
 
-#### `POST /api/admin/categories` `[SuperAdmin]`
+#### `POST /api/admin/categories` `[Admin]`
 
 Create a new event category.
 
@@ -827,7 +830,7 @@ Create a new event category.
 
 ---
 
-#### `PUT /api/admin/categories/{id}` `[SuperAdmin]`
+#### `PUT /api/admin/categories/{id}` `[Admin]`
 
 Rename a category.
 
@@ -837,7 +840,7 @@ Rename a category.
 
 ---
 
-#### `DELETE /api/admin/categories/{id}` `[SuperAdmin]`
+#### `DELETE /api/admin/categories/{id}` `[Admin]`
 
 Delete a category. Blocked if any events currently reference it.
 
@@ -847,7 +850,7 @@ Delete a category. Blocked if any events currently reference it.
 
 ---
 
-#### `POST /api/admin/tags` `[SuperAdmin]`
+#### `POST /api/admin/tags` `[Admin]`
 
 Create a new tag.
 
@@ -861,7 +864,7 @@ Create a new tag.
 
 ---
 
-#### `DELETE /api/admin/tags/{id}` `[SuperAdmin]`
+#### `DELETE /api/admin/tags/{id}` `[Admin]`
 
 Delete a tag. All event-tag associations for this tag are removed automatically.
 
@@ -870,7 +873,7 @@ Delete a tag. All event-tag associations for this tag are removed automatically.
 
 ---
 
-#### `GET /api/admin/stats` `[SuperAdmin]`
+#### `GET /api/admin/stats` `[Admin]`
 
 System-wide statistics dashboard.
 
@@ -893,9 +896,9 @@ System-wide statistics dashboard.
 
 ### Dev Utility Endpoints
 
-These endpoints are only active when `ASPNETCORE_ENVIRONMENT=Development`. They return `404` in all other environments.
+These endpoints are only active when `ASPNETCORE_ENVIRONMENT=Development`. They return `404` in all other environments. All three endpoints require an `Admin` or `SuperAdmin` JWT.
 
-#### `DELETE /api/dev/reset`
+#### `DELETE /api/dev/reset` `[Admin]`
 
 Deletes all user-generated rows (users, events, bookings, reviews, announcements, subscriptions). Seeded categories and tags are preserved.
 
@@ -903,7 +906,7 @@ Deletes all user-generated rows (users, events, bookings, reviews, announcements
 
 ---
 
-#### `DELETE /api/dev/events/{eventId}`
+#### `DELETE /api/dev/events/{eventId}` `[Admin]`
 
 Deletes bookings, reviews (with votes and replies), and announcements for a single event. The event itself is preserved.
 
@@ -912,7 +915,7 @@ Deletes bookings, reviews (with votes and replies), and announcements for a sing
 
 ---
 
-#### `POST /api/dev/seed`
+#### `POST /api/dev/seed` `[Admin]`
 
 Creates two users (host + attendee), two events (one upcoming, one past), and one booking so all flows can be tested immediately. Returns credentials in the response body.
 

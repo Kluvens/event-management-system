@@ -1,4 +1,5 @@
 using EventManagement.Data;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,6 +19,7 @@ public class DevController(AppDbContext db, IWebHostEnvironment env) : Controlle
     /// Deletes every row from every user-generated table.
     /// Seeds and categories/tags are preserved.
     /// </summary>
+    [Authorize(Roles = "Admin,SuperAdmin")]
     [HttpDelete("reset")]
     public async Task<IActionResult> Reset()
     {
@@ -39,6 +41,7 @@ public class DevController(AppDbContext db, IWebHostEnvironment env) : Controlle
 
     // ── Reset only bookings & reviews for one event ────────────────
 
+    [Authorize(Roles = "Admin,SuperAdmin")]
     [HttpDelete("events/{eventId}")]
     public async Task<IActionResult> ResetEvent(int eventId)
     {
@@ -68,6 +71,7 @@ public class DevController(AppDbContext db, IWebHostEnvironment env) : Controlle
     /// Creates two users (host + attendee), two events, and one booking
     /// so you can immediately test all flows.
     /// </summary>
+    [Authorize(Roles = "Admin,SuperAdmin")]
     [HttpPost("seed")]
     public async Task<IActionResult> Seed()
     {
