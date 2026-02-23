@@ -13,6 +13,7 @@ namespace EventManagement.Controllers;
 public class EventsController(AppDbContext db) : ControllerBase
 {
     private const string RoleAdmin       = "Admin";
+    private const string RoleSuperAdmin  = "SuperAdmin";
     private const string StatusConfirmed = "Confirmed";
     private const string StatusCancelled = "Cancelled";
     private const string StatusPostponed = "Postponed";
@@ -32,8 +33,10 @@ public class EventsController(AppDbContext db) : ControllerBase
         [FromQuery] DateTime? to,
         [FromQuery] string? sortBy)
     {
-        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var userId    = userIdStr is not null ? int.Parse(userIdStr) : (int?)null;
+        var userIdStr    = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userId       = userIdStr is not null ? int.Parse(userIdStr) : (int?)null;
+        var role         = User.FindFirstValue(ClaimTypes.Role);
+        var isSuperAdmin = role == RoleSuperAdmin;
 
         var query = db.Events
             .Include(e => e.CreatedBy)
@@ -42,10 +45,17 @@ public class EventsController(AppDbContext db) : ControllerBase
             .Include(e => e.EventTags).ThenInclude(et => et.Tag)
             .AsQueryable();
 
-        // Visibility: unauthenticated → only public; authenticated → public + own private
-        query = userId.HasValue
-            ? query.Where(e => e.IsPublic || e.CreatedById == userId.Value)
-            : query.Where(e => e.IsPublic);
+        // Suspended events are invisible to everyone except SuperAdmin
+        if (!isSuperAdmin)
+            query = query.Where(e => !e.IsSuspended);
+
+        // Visibility: SuperAdmin/Admin see all; authenticated → public + own private; anonymous → public only
+        if (!isSuperAdmin && role != RoleAdmin)
+        {
+            query = userId.HasValue
+                ? query.Where(e => e.IsPublic || e.CreatedById == userId.Value)
+                : query.Where(e => e.IsPublic);
+        }
 
         if (!string.IsNullOrWhiteSpace(search))
             query = query.Where(e =>
@@ -84,8 +94,11 @@ public class EventsController(AppDbContext db) : ControllerBase
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(int id)
     {
-        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var userId    = userIdStr is not null ? int.Parse(userIdStr) : (int?)null;
+        var userIdStr    = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userId       = userIdStr is not null ? int.Parse(userIdStr) : (int?)null;
+        var role         = User.FindFirstValue(ClaimTypes.Role);
+        var isSuperAdmin = role == RoleSuperAdmin;
+        var isAdmin      = role == RoleAdmin;
 
         var ev = await db.Events
             .Include(e => e.CreatedBy)
@@ -95,7 +108,8 @@ public class EventsController(AppDbContext db) : ControllerBase
             .FirstOrDefaultAsync(e => e.Id == id);
 
         if (ev is null) return NotFound();
-        if (!ev.IsPublic && ev.CreatedById != userId) return NotFound();
+        if (ev.IsSuspended && !isSuperAdmin) return NotFound();
+        if (!ev.IsPublic && ev.CreatedById != userId && !isAdmin && !isSuperAdmin) return NotFound();
 
         return Ok(ToResponse(ev));
     }
@@ -115,7 +129,7 @@ public class EventsController(AppDbContext db) : ControllerBase
             .FirstOrDefaultAsync(e => e.Id == id);
 
         if (ev is null) return NotFound();
-        if (ev.CreatedById != userId && role != RoleAdmin) return Forbid();
+        if (ev.CreatedById != userId && role != RoleAdmin && role != RoleSuperAdmin) return Forbid();
 
         var confirmed  = ev.Bookings.Count(b => b.Status == StatusConfirmed);
         var cancelled  = ev.Bookings.Count(b => b.Status == StatusCancelled);
@@ -175,7 +189,7 @@ public class EventsController(AppDbContext db) : ControllerBase
 
         var ev = await db.Events.Include(e => e.EventTags).FirstOrDefaultAsync(e => e.Id == id);
         if (ev is null) return NotFound();
-        if (ev.CreatedById != userId && role != RoleAdmin) return Forbid();
+        if (ev.CreatedById != userId && role != RoleAdmin && role != RoleSuperAdmin) return Forbid();
 
         ev.Title       = req.Title;
         ev.Description = req.Description;
@@ -205,7 +219,7 @@ public class EventsController(AppDbContext db) : ControllerBase
 
         var ev = await db.Events.FindAsync(id);
         if (ev is null) return NotFound();
-        if (ev.CreatedById != userId && role != RoleAdmin) return Forbid();
+        if (ev.CreatedById != userId && role != RoleAdmin && role != RoleSuperAdmin) return Forbid();
         if (ev.Status == StatusCancelled)
             return BadRequest(new { message = "Event is already cancelled." });
 
@@ -225,7 +239,7 @@ public class EventsController(AppDbContext db) : ControllerBase
 
         var ev = await db.Events.FindAsync(id);
         if (ev is null) return NotFound();
-        if (ev.CreatedById != userId && role != RoleAdmin) return Forbid();
+        if (ev.CreatedById != userId && role != RoleAdmin && role != RoleSuperAdmin) return Forbid();
         if (ev.Status == StatusCancelled)
             return BadRequest(new { message = "Cannot postpone a cancelled event." });
 
@@ -248,7 +262,7 @@ public class EventsController(AppDbContext db) : ControllerBase
 
         var ev = await db.Events.FindAsync(id);
         if (ev is null) return NotFound();
-        if (ev.CreatedById != userId && role != RoleAdmin) return Forbid();
+        if (ev.CreatedById != userId && role != RoleAdmin && role != RoleSuperAdmin) return Forbid();
 
         db.Events.Remove(ev);
         await db.SaveChangesAsync();
@@ -282,7 +296,7 @@ public class EventsController(AppDbContext db) : ControllerBase
 
         var ev = await db.Events.FindAsync(id);
         if (ev is null) return NotFound();
-        if (ev.CreatedById != userId && role != RoleAdmin) return Forbid();
+        if (ev.CreatedById != userId && role != RoleAdmin && role != RoleSuperAdmin) return Forbid();
 
         var announcement = new Announcement
         {

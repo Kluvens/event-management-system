@@ -25,6 +25,7 @@ A full-stack event management platform originally built as the **UNSW COMP3900**
   - [Subscriptions](#subscription-endpoints)
   - [Tags](#tag-endpoints)
   - [Categories](#category-endpoints)
+  - [Super Administrator](#super-administrator-endpoints)
   - [Dev Utilities](#dev-utility-endpoints)
 - [Authentication Flow](#authentication-flow)
 - [Loyalty Programme](#loyalty-programme)
@@ -48,30 +49,14 @@ This project was originally submitted for UNSW COMP3900 (Computer Science Projec
 
 ---
 
-## What's New (Post-University)
-
-After graduating I rebuilt the backend from scratch in **.NET 9** with a much broader feature set and production-quality practices:
-
-| Area | Addition |
-|---|---|
-| **Events** | Pricing, public/private visibility, status lifecycle (Active / Cancelled / Postponed), tag-based discovery, sortable listings |
-| **Reviews** | Full review system with ratings, replies, upvote/downvote, and host-pinned reviews |
-| **Subscriptions** | Follow/unfollow hosts; view your subscribers as a host |
-| **Announcements** | Hosts can post announcements attached to an event |
-| **Event stats** | Per-event dashboard: occupancy rate, revenue, average rating |
-| **Loyalty programme** | Points tracked per booking; five-tier system (Standard → Bronze → Silver → Gold → Elite) with percentage discounts |
-| **Tags** | 12 seeded free-form tags assignable to events; multi-tag filtering on discovery |
-| **Dev utilities** | `DELETE /api/dev/reset` and `POST /api/dev/seed` to speed up manual testing |
-| **Test suite** | 111 xUnit tests (unit + integration) with an in-memory SQLite test database |
-
----
-
 ## Features
 
 | Area | Capability |
 |---|---|
 | **Auth** | Register, login, JWT access tokens (7-day expiry) |
-| **Roles** | `Attendee` (default) · `Admin` |
+| **Roles** | `Attendee` (default) · `Admin` · `SuperAdmin` |
+| **Super Admin** | System-wide admin panel: user management, event oversight, booking inspection, category/tag management, stats dashboard |
+| **Suspension** | SuperAdmin can suspend users (blocks login) and events (hidden from all public access) |
 | **Events** | Create, read, update, delete with owner / admin guard |
 | **Event lifecycle** | Cancel and postpone events; status tracked as `Active`, `Cancelled`, or `Postponed` |
 | **Visibility** | Events can be public or private (only visible to the creator) |
@@ -118,6 +103,7 @@ event-management-system/
 │   ├── EventManagement/
 │   │   ├── Controllers/
 │   │   │   ├── AuthController.cs           # POST /api/auth/register|login
+│   │   │   ├── AdminController.cs          # /api/admin/* (SuperAdmin only)
 │   │   │   ├── EventsController.cs         # CRUD + cancel/postpone/stats/announcements
 │   │   │   ├── BookingsController.cs       # /api/bookings
 │   │   │   ├── ReviewsController.cs        # /api/events/{id}/reviews (+ replies, votes, pin)
@@ -129,6 +115,7 @@ event-management-system/
 │   │   │   └── AppDbContext.cs             # EF Core DbContext + seed data
 │   │   ├── DTOs/
 │   │   │   ├── AuthDtos.cs
+│   │   │   ├── AdminDTOs.cs
 │   │   │   ├── EventDtos.cs
 │   │   │   ├── BookingDtos.cs
 │   │   │   ├── ReviewDtos.cs
@@ -151,7 +138,7 @@ event-management-system/
 │   │   │   └── JwtService.cs              # Token generation
 │   │   ├── appsettings.json
 │   │   └── Program.cs                     # DI, middleware, Swagger config
-���   └── EventManagement.Tests/
+|   └── EventManagement.Tests/
 │       ├── Helpers/
 │       │   ├── ApiClient.cs               # Typed HTTP client for integration tests
 │       │   └── CustomWebApplicationFactory.cs
@@ -192,11 +179,14 @@ Open [backend/EventManagement/appsettings.json](backend/EventManagement/appsetti
     "Key": "SuperSecretKey_ChangeThisInProduction_AtLeast32Chars!",
     "Issuer": "EventManagementAPI",
     "Audience": "EventManagementClient"
+  },
+  "AdminSettings": {
+    "RegistrationKey": "CHANGE_THIS_ADMIN_SECRET_KEY_IN_PRODUCTION"
   }
 }
 ```
 
-> **Important:** Replace `Jwt:Key` with a strong, randomly generated value before deploying to any non-local environment.
+> **Important:** Replace `Jwt:Key` and `AdminSettings:RegistrationKey` with strong, randomly generated values before deploying to any non-local environment. The registration key is the only gate protecting SuperAdmin account creation.
 
 ### Run the API
 
@@ -265,7 +255,7 @@ Authenticate an existing user.
 
 **Response `200 OK`** — same shape as register.
 
-**Response `401 Unauthorized`** — wrong email or password.
+**Response `401 Unauthorized`** — wrong email or password, or account is suspended.
 
 ---
 
@@ -673,6 +663,234 @@ Return all event categories.
 
 ---
 
+### Super Administrator Endpoints
+
+A `SuperAdmin` sits above all other roles and has system-wide access. All endpoints in this section (except registration) require a `SuperAdmin` JWT.
+
+#### Role hierarchy
+
+```
+Attendee  →  can book, review, follow hosts, create events
+Admin     →  all of the above + can manage any event (not just own)
+SuperAdmin→  all of the above + full system administration panel
+```
+
+---
+
+#### `POST /api/admin/register`
+
+Create a `SuperAdmin` account. Protected by the `AdminSettings:RegistrationKey` from configuration — anyone without it cannot create a SuperAdmin.
+
+**Request body**
+```json
+{
+  "name": "Root Admin",
+  "email": "admin@example.com",
+  "password": "SecurePassword123!",
+  "registrationKey": "CHANGE_THIS_ADMIN_SECRET_KEY_IN_PRODUCTION"
+}
+```
+
+**Response `200 OK`** — same JWT auth response as regular login, with `"role": "SuperAdmin"`.
+**Response `401 Unauthorized`** — wrong registration key.
+**Response `409 Conflict`** — email already in use.
+
+---
+
+#### `GET /api/admin/users` `[SuperAdmin]`
+
+List all users in the system.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `search` | string | Filter by name or email |
+| `role` | string | Filter by role (`Attendee`, `Admin`, `SuperAdmin`) |
+| `isSuspended` | bool | Filter by suspension status |
+
+**Response `200 OK`** — array of user summaries including `isSuspended`, `loyaltyTier`, event count, and confirmed booking count.
+
+---
+
+#### `GET /api/admin/users/{id}` `[SuperAdmin]`
+
+Full user profile plus up to 10 recent bookings and 10 recent events.
+
+**Response `200 OK`** — detailed user object.
+**Response `404 Not Found`**
+
+---
+
+#### `POST /api/admin/users/{id}/suspend` `[SuperAdmin]`
+
+Suspend a user. Suspended users receive `"Your account has been suspended"` on next login attempt. Cannot suspend another `SuperAdmin`.
+
+**Response `204 No Content`**
+**Response `400 Bad Request`** — target is a SuperAdmin.
+**Response `404 Not Found`**
+
+---
+
+#### `POST /api/admin/users/{id}/unsuspend` `[SuperAdmin]`
+
+Restore a suspended user's access.
+
+**Response `204 No Content`**
+**Response `404 Not Found`**
+
+---
+
+#### `PUT /api/admin/users/{id}/role` `[SuperAdmin]`
+
+Promote or demote a user's role between `Attendee` and `Admin`. Cannot change a `SuperAdmin`'s role.
+
+**Request body**
+```json
+{ "role": "Admin" }
+```
+
+**Response `204 No Content`**
+**Response `400 Bad Request`** — invalid role or target is SuperAdmin.
+**Response `404 Not Found`**
+
+---
+
+#### `POST /api/admin/users/{id}/adjust-points` `[SuperAdmin]`
+
+Add or deduct loyalty points. Use a positive `delta` to add, negative to deduct. Points floor at 0.
+
+**Request body**
+```json
+{ "delta": -500 }
+```
+
+**Response `200 OK`** — `{ "userId", "loyaltyPoints", "loyaltyTier" }`.
+
+---
+
+#### `GET /api/admin/events` `[SuperAdmin]`
+
+List **all** events: every status (`Active`, `Cancelled`, `Postponed`), every visibility (`public` and `private`), and including suspended events.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `search` | string | Filter by title or description |
+| `isSuspended` | bool | Filter by suspension status |
+| `status` | string | Filter by event status |
+
+**Response `200 OK`** — array of admin event objects including `isSuspended`.
+
+---
+
+#### `POST /api/admin/events/{id}/suspend` `[SuperAdmin]`
+
+Suspend an event. Suspended events are hidden from all public listings and cannot be booked.
+
+**Response `204 No Content`**
+**Response `404 Not Found`**
+
+---
+
+#### `POST /api/admin/events/{id}/unsuspend` `[SuperAdmin]`
+
+Restore a suspended event to public visibility.
+
+**Response `204 No Content`**
+**Response `404 Not Found`**
+
+---
+
+#### `GET /api/admin/bookings` `[SuperAdmin]`
+
+List all bookings across the entire system.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `userId` | int | Filter by user |
+| `eventId` | int | Filter by event |
+| `status` | string | `Confirmed` or `Cancelled` |
+
+**Response `200 OK`** — array of booking objects with user name, event title, and price.
+
+---
+
+#### `POST /api/admin/categories` `[SuperAdmin]`
+
+Create a new event category.
+
+**Request body**
+```json
+{ "name": "Festival" }
+```
+
+**Response `201 Created`** — `{ "id", "name" }`.
+**Response `409 Conflict`** — name already exists.
+
+---
+
+#### `PUT /api/admin/categories/{id}` `[SuperAdmin]`
+
+Rename a category.
+
+**Response `204 No Content`**
+**Response `404 Not Found`**
+**Response `409 Conflict`** — name already in use.
+
+---
+
+#### `DELETE /api/admin/categories/{id}` `[SuperAdmin]`
+
+Delete a category. Blocked if any events currently reference it.
+
+**Response `204 No Content`**
+**Response `404 Not Found`**
+**Response `409 Conflict`** — events are using this category.
+
+---
+
+#### `POST /api/admin/tags` `[SuperAdmin]`
+
+Create a new tag.
+
+**Request body**
+```json
+{ "name": "VR" }
+```
+
+**Response `201 Created`** — `{ "id", "name" }`.
+**Response `409 Conflict`** — name already exists.
+
+---
+
+#### `DELETE /api/admin/tags/{id}` `[SuperAdmin]`
+
+Delete a tag. All event-tag associations for this tag are removed automatically.
+
+**Response `204 No Content`**
+**Response `404 Not Found`**
+
+---
+
+#### `GET /api/admin/stats` `[SuperAdmin]`
+
+System-wide statistics dashboard.
+
+**Response `200 OK`**
+```json
+{
+  "totalUsers": 1200,
+  "activeUsers": 1195,
+  "suspendedUsers": 5,
+  "totalEvents": 340,
+  "activeEvents": 280,
+  "suspendedEvents": 3,
+  "totalBookings": 8500,
+  "confirmedBookings": 7900,
+  "totalRevenue": 394500.00
+}
+```
+
+---
+
 ### Dev Utility Endpoints
 
 These endpoints are only active when `ASPNETCORE_ENVIRONMENT=Development`. They return `404` in all other environments.
@@ -741,7 +959,8 @@ Users
   name           TEXT
   email          TEXT UNIQUE
   passwordHash   TEXT
-  role           TEXT      ("Attendee" | "Admin")
+  role           TEXT      ("Attendee" | "Admin" | "SuperAdmin")
+  isSuspended    BOOLEAN
   loyaltyPoints  INTEGER
   createdAt      DATETIME
 
@@ -764,6 +983,7 @@ Events
   price         DECIMAL(18,2)
   isPublic      BOOLEAN
   status        TEXT      ("Active" | "Cancelled" | "Postponed")
+  isSuspended   BOOLEAN
   postponedDate DATETIME nullable
   createdAt     DATETIME
   createdById   INTEGER FK → Users.id   (RESTRICT on delete)

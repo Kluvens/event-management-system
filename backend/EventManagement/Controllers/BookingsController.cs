@@ -48,6 +48,8 @@ public class BookingsController(AppDbContext db) : ControllerBase
             .FirstOrDefaultAsync(e => e.Id == req.EventId);
 
         if (ev is null) return NotFound(new { message = "Event not found." });
+        if (ev.IsSuspended)
+            return BadRequest(new { message = "This event is currently unavailable." });
         if (ev.Status == StatusCancelled)
             return BadRequest(new { message = "Event has been cancelled." });
 
@@ -56,7 +58,10 @@ public class BookingsController(AppDbContext db) : ControllerBase
             return BadRequest(new { message = "Event is fully booked." });
 
         var user = await db.Users.FindAsync(userId);
-        var discountedPrice = ev.Price * (1 - user!.LoyaltyDiscount);
+        if (user!.IsSuspended)
+            return Forbid();
+
+        var discountedPrice = ev.Price * (1 - user.LoyaltyDiscount);
         var pointsEarned = (int)(discountedPrice * 10);
 
         var existing = await db.Bookings

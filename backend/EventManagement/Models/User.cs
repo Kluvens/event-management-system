@@ -6,7 +6,8 @@ public class User
     public string Name { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string PasswordHash { get; set; } = string.Empty;
-    public string Role { get; set; } = "Attendee"; // "Admin" or "Attendee"
+    public string Role { get; set; } = "Attendee"; // "Attendee", "Admin", or "SuperAdmin"
+    public bool IsSuspended { get; set; } = false;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public int LoyaltyPoints { get; set; } = 0;
 

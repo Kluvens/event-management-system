@@ -13,6 +13,7 @@ public class Event
     public bool IsPublic { get; set; } = true;
     // "Active" | "Cancelled" | "Postponed"
     public string Status { get; set; } = "Active";
+    public bool IsSuspended { get; set; } = false;
     public DateTime? PostponedDate { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
