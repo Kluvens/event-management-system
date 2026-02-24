@@ -58,8 +58,8 @@ public class ReviewsController(AppDbContext db) : ControllerBase
         if (!hasAttended)
             return BadRequest(new { message = "You must have a confirmed booking to review this event." });
 
-        if (ev.StartDate > DateTime.UtcNow)
-            return BadRequest(new { message = "You cannot review an event that has not started yet." });
+        if (ev.EndDate > DateTime.UtcNow)
+            return BadRequest(new { message = "You can only review a completed event." });
 
         if (await db.Reviews.AnyAsync(r => r.EventId == eventId && r.UserId == userId))
             return Conflict(new { message = "You have already reviewed this event." });
@@ -129,6 +129,13 @@ public class ReviewsController(AppDbContext db) : ControllerBase
     public async Task<IActionResult> Reply(int eventId, int reviewId, ReviewReplyRequest req)
     {
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var role   = User.FindFirstValue(ClaimTypes.Role);
+
+        // Only the event organizer (or admin) can reply to reviews
+        var ev = await db.Events.FindAsync(eventId);
+        if (ev is null) return NotFound();
+        if (ev.CreatedById != userId && role != "Admin" && role != "SuperAdmin")
+            return Forbid();
 
         var review = await db.Reviews
             .Include(r => r.User)

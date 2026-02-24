@@ -9,6 +9,7 @@ import {
   Ticket,
   ShieldCheck,
   Plus,
+  Heart,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -54,6 +55,16 @@ export function Navbar() {
           onClick={() => setMobileOpen(false)}
         >
           My Bookings
+        </Link>
+      )}
+      {token && (
+        <Link
+          to="/favorites"
+          className="flex items-center gap-1.5 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900"
+          onClick={() => setMobileOpen(false)}
+        >
+          <Heart className="h-3.5 w-3.5" />
+          Favourites
         </Link>
       )}
       {token && (
@@ -128,6 +139,10 @@ export function Navbar() {
                   <DropdownMenuItem onClick={() => navigate('/my-bookings')}>
                     <Ticket className="mr-2 h-4 w-4" />
                     My Bookings
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/favorites')}>
+                    <Heart className="mr-2 h-4 w-4" />
+                    Favourites
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate('/dashboard')}>
                     <LayoutDashboard className="mr-2 h-4 w-4" />

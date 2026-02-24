@@ -162,9 +162,10 @@ export function EventDetailPage() {
     (event.displayStatus === 'Published' || event.displayStatus === 'Live') &&
     !myBooking &&
     !!token
-  const hasEnded = new Date(event.endDate) < new Date()
   const canReview =
-    !!myBooking && hasEnded && !reviews.find((r) => r.userId === user?.userId)
+    !!myBooking &&
+    event.displayStatus === 'Completed' &&
+    !reviews.find((r) => r.userId === user?.userId)
 
   return (
     <div className="container mx-auto max-w-5xl px-4 py-8">
@@ -647,7 +648,7 @@ export function EventDetailPage() {
                   >
                     👎 {review.dislikes}
                   </button>
-                  {token && (
+                  {isOwner && (
                     <button
                       onClick={() =>
                         setReplyTarget(

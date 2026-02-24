@@ -23,36 +23,39 @@ export function MyBookingsPage() {
   const [qrBooking, setQrBooking] = useState<Booking | null>(null)
   const [cancelTarget, setCancelTarget] = useState<Booking | null>(null)
 
+  const now = Date.now()
   const confirmed = bookings.filter((b) => b.status === 'Confirmed')
+  const upcoming  = confirmed.filter((b) => new Date(b.eventEndDate).getTime() >= now)
+  const past      = confirmed.filter((b) => new Date(b.eventEndDate).getTime() < now)
   const cancelled = bookings.filter((b) => b.status === 'Cancelled')
 
   if (isPending) return <LoadingSpinner />
 
-  function BookingCard({ booking }: { booking: Booking }) {
+  function BookingCard({ booking, isPast = false }: { booking: Booking; isPast?: boolean }) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
+      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md sm:p-5">
         <div className="mb-3 flex items-start justify-between gap-3">
           <Link
             to={`/events/${booking.eventId}`}
-            className="text-base font-semibold text-slate-900 hover:text-indigo-600"
+            className="text-sm font-semibold text-slate-900 hover:text-indigo-600 sm:text-base"
           >
             {booking.eventTitle}
           </Link>
           <Badge
-            variant={booking.status === 'Confirmed' ? 'default' : 'secondary'}
+            variant={isPast ? 'secondary' : 'default'}
             className="shrink-0 text-xs"
           >
-            {booking.status}
+            {isPast ? 'Completed' : booking.status}
           </Badge>
         </div>
 
-        <div className="mb-3 space-y-1.5 text-sm text-slate-500">
+        <div className="mb-3 space-y-1.5 text-xs text-slate-500 sm:text-sm">
           <div className="flex items-center gap-2">
-            <Calendar className="h-3.5 w-3.5" />
+            <Calendar className="h-3.5 w-3.5 shrink-0" />
             {formatDate(booking.eventStartDate, 'MMM d, yyyy · h:mm a')}
           </div>
           <div className="flex items-center gap-2">
-            <MapPin className="h-3.5 w-3.5" />
+            <MapPin className="h-3.5 w-3.5 shrink-0" />
             {booking.eventLocation}
           </div>
         </div>
@@ -77,60 +80,80 @@ export function MyBookingsPage() {
           </div>
         )}
 
-        {booking.status === 'Confirmed' && (
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1.5"
-              onClick={() => setQrBooking(booking)}
-            >
-              <QrCode className="h-3.5 w-3.5" />
-              QR Code
+        <div className="flex flex-wrap gap-2">
+          {!isPast && (
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5"
+                onClick={() => setQrBooking(booking)}
+              >
+                <QrCode className="h-3.5 w-3.5" />
+                QR Code
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-red-500 hover:text-red-600"
+                onClick={() => setCancelTarget(booking)}
+              >
+                Cancel
+              </Button>
+            </>
+          )}
+          {isPast && (
+            <Button asChild size="sm" variant="outline">
+              <Link to={`/events/${booking.eventId}`}>View &amp; Review</Link>
             </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-red-500 hover:text-red-600"
-              onClick={() => setCancelTarget(booking)}
-            >
-              Cancel
-            </Button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="container mx-auto max-w-3xl px-4 py-8">
+    <div className="container mx-auto max-w-3xl px-4 py-6 sm:py-8">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">My Bookings</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          {confirmed.length} confirmed · {cancelled.length} cancelled
+        <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">My Bookings</h1>
+        <p className="mt-1 text-xs text-slate-500 sm:text-sm">
+          {upcoming.length} upcoming · {past.length} past · {cancelled.length} cancelled
         </p>
       </div>
 
-      <Tabs defaultValue="confirmed">
+      <Tabs defaultValue="upcoming">
         <TabsList className="mb-4">
-          <TabsTrigger value="confirmed">
-            Confirmed ({confirmed.length})
+          <TabsTrigger value="upcoming">
+            Upcoming {upcoming.length > 0 && `(${upcoming.length})`}
+          </TabsTrigger>
+          <TabsTrigger value="past">
+            Past {past.length > 0 && `(${past.length})`}
           </TabsTrigger>
           <TabsTrigger value="cancelled">
-            Cancelled ({cancelled.length})
+            Cancelled {cancelled.length > 0 && `(${cancelled.length})`}
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="confirmed" className="space-y-3">
-          {confirmed.length === 0 ? (
+        <TabsContent value="upcoming" className="space-y-3">
+          {upcoming.length === 0 ? (
             <div className="rounded-xl border border-slate-200 bg-white py-12 text-center">
-              <p className="text-slate-500">No confirmed bookings yet.</p>
+              <p className="text-slate-500">No upcoming bookings.</p>
               <Button asChild className="mt-4" variant="outline">
                 <Link to="/">Browse Events</Link>
               </Button>
             </div>
           ) : (
-            confirmed.map((b) => <BookingCard key={b.id} booking={b} />)
+            upcoming.map((b) => <BookingCard key={b.id} booking={b} />)
+          )}
+        </TabsContent>
+
+        <TabsContent value="past" className="space-y-3">
+          {past.length === 0 ? (
+            <div className="rounded-xl border border-slate-200 bg-white py-12 text-center text-slate-500">
+              No past events yet.
+            </div>
+          ) : (
+            past.map((b) => <BookingCard key={b.id} booking={b} isPast />)
           )}
         </TabsContent>
 

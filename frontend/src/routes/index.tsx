@@ -8,6 +8,7 @@ import { EventDetailPage } from '@/pages/EventDetailPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { RegisterPage } from '@/pages/RegisterPage'
 import { MyBookingsPage } from '@/pages/MyBookingsPage'
+import { FavoritesPage } from '@/pages/FavoritesPage'
 import { CreateEventPage } from '@/pages/CreateEventPage'
 import { EditEventPage } from '@/pages/EditEventPage'
 import { OrganizerDashboardPage } from '@/pages/OrganizerDashboardPage'
@@ -29,6 +30,7 @@ export const router = createBrowserRouter([
         element: <ProtectedRoute />,
         children: [
           { path: 'my-bookings', element: <MyBookingsPage /> },
+          { path: 'favorites', element: <FavoritesPage /> },
           { path: 'events/create', element: <CreateEventPage /> },
           { path: 'events/:id/edit', element: <EditEventPage /> },
           { path: 'dashboard', element: <OrganizerDashboardPage /> },

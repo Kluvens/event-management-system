@@ -30,7 +30,7 @@ public class BookingsController(AppDbContext db) : ControllerBase
             .OrderByDescending(b => b.BookedAt)
             .Select(b => new BookingResponse(
                 b.Id, b.EventId, b.Event.Title, b.Event.Location,
-                b.Event.StartDate, b.Event.Price,
+                b.Event.StartDate, b.Event.EndDate, b.Event.Price,
                 b.BookedAt, b.Status, b.PointsEarned,
                 b.IsCheckedIn, b.CheckedInAt, b.CheckInToken))
             .ToListAsync();
@@ -240,7 +240,7 @@ public class BookingsController(AppDbContext db) : ControllerBase
     // ── Helper ─────────────────────────────────────────────────────
 
     private static BookingResponse ToResponse(Booking b, Event ev) => new(
-        b.Id, ev.Id, ev.Title, ev.Location, ev.StartDate,
+        b.Id, ev.Id, ev.Title, ev.Location, ev.StartDate, ev.EndDate,
         ev.Price, b.BookedAt, b.Status, b.PointsEarned,
         b.IsCheckedIn, b.CheckedInAt, b.CheckInToken);
 }

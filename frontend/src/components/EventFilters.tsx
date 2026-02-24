@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Search, SlidersHorizontal, X } from 'lucide-react'
+import { Search, SlidersHorizontal, X, MapPin } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import {
@@ -29,19 +29,42 @@ export function EventFilters({ filters, onChange }: Props) {
   const { data: categories = [] } = useCategories()
   const { data: tags = [] } = useTags()
   const [search, setSearch] = useState(filters.search ?? '')
+  const [location, setLocation] = useState(filters.location ?? '')
+  const [showAdvanced, setShowAdvanced] = useState(false)
   const debouncedSearch = useDebounce(search, 400)
+  const debouncedLocation = useDebounce(location, 400)
 
   useEffect(() => {
     onChange({ ...filters, search: debouncedSearch || undefined })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch])
 
+  useEffect(() => {
+    onChange({ ...filters, location: debouncedLocation || undefined })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedLocation])
+
+  // Sync external location changes (e.g. from "See all nearby" button)
+  useEffect(() => {
+    setLocation(filters.location ?? '')
+  }, [filters.location])
+
   const selectedTagIds = filters.tagIds ?? []
+
+  const advancedFilterCount = [
+    !!filters.location,
+    !!filters.categoryId,
+    selectedTagIds.length > 0,
+    !!filters.from,
+    !!filters.to,
+  ].filter(Boolean).length
+
   const hasActiveFilters =
     !!filters.categoryId ||
     selectedTagIds.length > 0 ||
     !!filters.from ||
-    !!filters.to
+    !!filters.to ||
+    !!filters.location
 
   function toggleTag(id: number) {
     const next = selectedTagIds.includes(id)
@@ -52,23 +75,24 @@ export function EventFilters({ filters, onChange }: Props) {
 
   function clearAll() {
     setSearch('')
+    setLocation('')
     onChange({})
   }
 
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      {/* Search */}
-      <div className="relative min-w-[220px] flex-1">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+  const advancedFilters = (
+    <>
+      {/* Location */}
+      <div className="relative">
+        <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
         <Input
-          placeholder="Search events…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
+          placeholder="City or suburb…"
+          value={location}
+          onChange={(e) => setLocation(e.target.value)}
+          className="pl-9 w-full sm:w-[160px]"
         />
-        {search && (
+        {location && (
           <button
-            onClick={() => setSearch('')}
+            onClick={() => setLocation('')}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
           >
             <X className="h-3.5 w-3.5" />
@@ -86,7 +110,7 @@ export function EventFilters({ filters, onChange }: Props) {
           })
         }
       >
-        <SelectTrigger className="w-[160px]">
+        <SelectTrigger className="w-full sm:w-[160px]">
           <SelectValue placeholder="Category" />
         </SelectTrigger>
         <SelectContent>
@@ -102,8 +126,8 @@ export function EventFilters({ filters, onChange }: Props) {
       {/* Tags */}
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" className="gap-1.5">
-            <SlidersHorizontal className="h-3.5 w-3.5" />
+          <Button variant="outline" size="sm" className="gap-1.5 w-full sm:w-auto justify-start">
+            <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" />
             Tags
             {selectedTagIds.length > 0 && (
               <span className="ml-1 rounded-full bg-indigo-100 px-1.5 py-0.5 text-xs font-medium text-indigo-700">
@@ -113,9 +137,7 @@ export function EventFilters({ filters, onChange }: Props) {
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-52 p-3">
-          <p className="mb-2 text-xs font-semibold uppercase text-slate-500">
-            Tags
-          </p>
+          <p className="mb-2 text-xs font-semibold uppercase text-slate-500">Tags</p>
           <div className="max-h-52 space-y-2 overflow-y-auto">
             {tags.map((tag) => (
               <div key={tag.id} className="flex items-center gap-2">
@@ -143,7 +165,7 @@ export function EventFilters({ filters, onChange }: Props) {
           onChange({ ...filters, sortBy: v as EventFilters['sortBy'] })
         }
       >
-        <SelectTrigger className="w-[140px]">
+        <SelectTrigger className="w-full sm:w-[140px]">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -160,12 +182,10 @@ export function EventFilters({ filters, onChange }: Props) {
         onChange={(e) =>
           onChange({
             ...filters,
-            from: e.target.value
-              ? e.target.value + 'T00:00:00Z'
-              : undefined,
+            from: e.target.value ? e.target.value + 'T00:00:00Z' : undefined,
           })
         }
-        className="w-[140px]"
+        className="w-full sm:w-[140px]"
       />
 
       {/* Date to */}
@@ -178,16 +198,66 @@ export function EventFilters({ filters, onChange }: Props) {
             to: e.target.value ? e.target.value + 'T23:59:59Z' : undefined,
           })
         }
-        className="w-[140px]"
+        className="w-full sm:w-[140px]"
       />
 
       {/* Clear */}
       {(hasActiveFilters || search) && (
-        <Button variant="ghost" size="sm" onClick={clearAll} className="gap-1">
+        <Button variant="ghost" size="sm" onClick={clearAll} className="gap-1 w-full sm:w-auto">
           <X className="h-3.5 w-3.5" />
-          Clear
+          Clear all
         </Button>
       )}
+    </>
+  )
+
+  return (
+    <div className="space-y-2">
+      {/* Row 1: Search + mobile filters toggle */}
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Input
+            placeholder="Search events…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+
+        {/* Mobile: Filters toggle button */}
+        <Button
+          variant="outline"
+          size="sm"
+          className="shrink-0 gap-1.5 sm:hidden"
+          onClick={() => setShowAdvanced(!showAdvanced)}
+        >
+          <SlidersHorizontal className="h-4 w-4" />
+          Filters
+          {advancedFilterCount > 0 && (
+            <span className="rounded-full bg-indigo-100 px-1.5 py-0.5 text-xs font-medium text-indigo-700">
+              {advancedFilterCount}
+            </span>
+          )}
+        </Button>
+      </div>
+
+      {/* Row 2: Advanced filters — always on sm+, toggleable on mobile */}
+      <div
+        className={`${
+          showAdvanced ? 'flex' : 'hidden'
+        } sm:flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center`}
+      >
+        {advancedFilters}
+      </div>
     </div>
   )
 }

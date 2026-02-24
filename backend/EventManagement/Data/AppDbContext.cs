@@ -16,6 +16,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<ReviewVote> ReviewVotes => Set<ReviewVote>();
     public DbSet<HostSubscription> HostSubscriptions => Set<HostSubscription>();
     public DbSet<Announcement> Announcements => Set<Announcement>();
+    public DbSet<UserFavorite> UserFavorites => Set<UserFavorite>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -82,6 +83,22 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .WithMany()
             .HasForeignKey(rv => rv.UserId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // ── UserFavorites (composite PK) ──────────────────────────
+        modelBuilder.Entity<UserFavorite>()
+            .HasKey(uf => new { uf.UserId, uf.EventId });
+
+        modelBuilder.Entity<UserFavorite>()
+            .HasOne(uf => uf.User)
+            .WithMany()
+            .HasForeignKey(uf => uf.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<UserFavorite>()
+            .HasOne(uf => uf.Event)
+            .WithMany()
+            .HasForeignKey(uf => uf.EventId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         // ── HostSubscriptions (composite PK) ──────────────────────
         modelBuilder.Entity<HostSubscription>()

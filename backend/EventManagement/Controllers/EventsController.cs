@@ -29,6 +29,7 @@ public class EventsController(AppDbContext db) : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll(
         [FromQuery] string? search,
+        [FromQuery] string? location,
         [FromQuery] int? categoryId,
         [FromQuery] List<int>? tagIds,
         [FromQuery] DateTime? from,
@@ -56,6 +57,9 @@ public class EventsController(AppDbContext db) : ControllerBase
                 e.Title.Contains(search) ||
                 e.Description.Contains(search) ||
                 e.Location.Contains(search));
+
+        if (!string.IsNullOrWhiteSpace(location))
+            query = query.Where(e => e.Location.Contains(location));
 
         if (categoryId.HasValue)
             query = query.Where(e => e.CategoryId == categoryId.Value);
@@ -105,6 +109,7 @@ public class EventsController(AppDbContext db) : ControllerBase
         if (ev.IsSuspended && !isSuperAdmin) return NotFound();
         if (!ev.IsPublic && ev.CreatedById != userId && !isAdmin && !isSuperAdmin) return NotFound();
         if (ev.Status == StatusDraft && ev.CreatedById != userId && !isAdmin && !isSuperAdmin) return NotFound();
+        if (ev.Status == StatusCancelled && ev.CreatedById != userId && !isAdmin && !isSuperAdmin) return NotFound();
 
         return Ok(ToResponse(ev));
     }
@@ -368,6 +373,15 @@ public class EventsController(AppDbContext db) : ControllerBase
             ? query.Where(e => e.Status != StatusDraft || e.CreatedById == userId.Value)
             : query.Where(e => e.Status != StatusDraft);
 
+        // Cancelled events are not visible to the public (only owner/admin can see them)
+        query = userId.HasValue
+            ? query.Where(e => e.Status != StatusCancelled || e.CreatedById == userId.Value)
+            : query.Where(e => e.Status != StatusCancelled);
+
+        // Completed events (past end date) are hidden from the browse listing;
+        // attendees access them via their bookings history
+        query = query.Where(e => e.EndDate >= DateTime.UtcNow);
+
         return query;
     }
 
@@ -384,7 +398,7 @@ public class EventsController(AppDbContext db) : ControllerBase
         await db.SaveChangesAsync();
     }
 
-    private static string ComputeDisplayStatus(Event e, int confirmedCount)
+    internal static string ComputeDisplayStatus(Event e, int confirmedCount)
     {
         if (e.Status is StatusDraft or StatusCancelled or StatusPostponed) return e.Status;
         var now = DateTime.UtcNow;
@@ -394,7 +408,7 @@ public class EventsController(AppDbContext db) : ControllerBase
         return "Published";
     }
 
-    private static EventResponse ToResponse(Event e)
+    internal static EventResponse ToResponse(Event e)
     {
         var confirmed = e.Bookings.Count(b => b.Status == StatusConfirmed);
         return new EventResponse(

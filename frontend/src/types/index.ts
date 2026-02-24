@@ -94,6 +94,7 @@ export interface PostponeEventRequest {
 
 export interface EventFilters {
   search?: string
+  location?: string
   categoryId?: number
   tagIds?: number[]
   from?: string
@@ -125,6 +126,7 @@ export interface Booking {
   eventTitle: string
   eventLocation: string
   eventStartDate: string
+  eventEndDate: string
   eventPrice: number
   bookedAt: string
   status: 'Confirmed' | 'Cancelled'
