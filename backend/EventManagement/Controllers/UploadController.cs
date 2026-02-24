@@ -1,3 +1,4 @@
+using EventManagement.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -5,7 +6,7 @@ namespace EventManagement.Controllers;
 
 [ApiController]
 [Route("api/upload")]
-public class UploadController(IWebHostEnvironment env) : ControllerBase
+public class UploadController(IStorageService storage) : ControllerBase
 {
     private static readonly string[] AllowedContentTypes =
         ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
@@ -23,17 +24,7 @@ public class UploadController(IWebHostEnvironment env) : ControllerBase
         if (file.Length > 5 * 1024 * 1024)
             return BadRequest(new { message = "File size must be under 5 MB." });
 
-        var uploadsDir = Path.Combine(
-            env.WebRootPath ?? env.ContentRootPath, "uploads", "events");
-        Directory.CreateDirectory(uploadsDir);
-
-        var ext      = Path.GetExtension(file.FileName).ToLowerInvariant();
-        var fileName = $"{Guid.NewGuid()}{ext}";
-        var filePath = Path.Combine(uploadsDir, fileName);
-
-        await using var stream = new FileStream(filePath, FileMode.Create);
-        await file.CopyToAsync(stream);
-
-        return Ok(new { url = $"/uploads/events/{fileName}" });
+        var url = await storage.UploadAsync(file, "events");
+        return Ok(new { url });
     }
 }

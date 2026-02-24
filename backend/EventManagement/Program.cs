@@ -16,6 +16,13 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<JwtService>();
 builder.Services.AddScoped<AuthService>();
 
+// Storage: "Local" (default for dev) or "S3" (production)
+var storageProvider = builder.Configuration["Storage:Provider"] ?? "Local";
+if (storageProvider.Equals("S3", StringComparison.OrdinalIgnoreCase))
+    builder.Services.AddSingleton<IStorageService, S3StorageService>();
+else
+    builder.Services.AddSingleton<IStorageService, LocalStorageService>();
+
 // JWT authentication
 var jwtKey = builder.Configuration["Jwt:Key"]!;
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
