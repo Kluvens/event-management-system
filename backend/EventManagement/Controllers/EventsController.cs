@@ -157,7 +157,8 @@ public class EventsController(AppDbContext db) : ControllerBase
             Price       = req.Price,
             IsPublic    = req.IsPublic,
             CategoryId  = req.CategoryId,
-            CreatedById = userId
+            CreatedById = userId,
+            ImageUrl    = req.ImageUrl
         };
 
         db.Events.Add(ev);
@@ -215,6 +216,7 @@ public class EventsController(AppDbContext db) : ControllerBase
         ev.Price       = req.Price;
         ev.IsPublic    = req.IsPublic;
         ev.CategoryId  = req.CategoryId;
+        ev.ImageUrl    = req.ImageUrl;
 
         db.EventTags.RemoveRange(ev.EventTags);
         await db.SaveChangesAsync();
@@ -404,6 +406,7 @@ public class EventsController(AppDbContext db) : ControllerBase
             e.PostponedDate,
             e.CreatedAt, e.CreatedById, e.CreatedBy.Name,
             e.CategoryId, e.Category.Name,
-            e.EventTags.Select(et => et.Tag.Name).ToList());
+            e.EventTags.Select(et => et.Tag.Name).ToList(),
+            e.ImageUrl);
     }
 }

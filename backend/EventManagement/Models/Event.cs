@@ -17,6 +17,8 @@ public class Event
     public DateTime? PostponedDate { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    public string? ImageUrl { get; set; }
+
     public int CreatedById { get; set; }
     public User CreatedBy { get; set; } = null!;
 

@@ -56,6 +56,7 @@ export interface Event {
   categoryId: number
   categoryName: string
   tags: string[]
+  imageUrl: string | null
 }
 
 export interface EventStats {
@@ -81,6 +82,7 @@ export interface CreateEventRequest {
   isPublic: boolean
   categoryId: number
   tagIds: number[]
+  imageUrl?: string | null
 }
 
 export type UpdateEventRequest = CreateEventRequest
@@ -297,6 +299,7 @@ export interface AdminEvent {
   categoryName: string
   tags: string[]
   createdAt: string
+  imageUrl: string | null
 }
 
 export interface AdminBooking {

@@ -15,6 +15,10 @@ import {
   Lock,
   CheckCircle,
   Pin,
+  Car,
+  Bus,
+  Bike,
+  Footprints,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -173,7 +177,19 @@ export function EventDetailPage() {
       </button>
 
       {/* Header card */}
-      <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        {/* Hero image */}
+        {event.imageUrl && (
+          <div className="h-64 w-full overflow-hidden sm:h-80">
+            <img
+              src={event.imageUrl}
+              alt={event.title}
+              className="h-full w-full object-cover"
+            />
+          </div>
+        )}
+
+        <div className="p-6">
         <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div className="flex flex-wrap gap-2">
             <Badge variant="outline">{event.categoryName}</Badge>
@@ -333,6 +349,7 @@ export function EventDetailPage() {
             ) : null}
           </div>
         )}
+        </div>{/* end p-6 */}
       </div>
 
       {/* Tabs */}
@@ -357,7 +374,7 @@ export function EventDetailPage() {
             {event.description}
           </p>
           {event.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2">
+            <div className="mb-6 flex flex-wrap gap-2">
               {event.tags.map((tag) => (
                 <span
                   key={tag}
@@ -368,6 +385,75 @@ export function EventDetailPage() {
               ))}
             </div>
           )}
+
+          {/* Location & Map */}
+          <div className="border-t border-slate-100 pt-6">
+            <h2 className="mb-4 text-xl font-bold text-slate-900">Location</h2>
+
+            {/* Venue name + address */}
+            {(() => {
+              const commaIdx = event.location.indexOf(',')
+              const venueName =
+                commaIdx !== -1
+                  ? event.location.slice(0, commaIdx).trim()
+                  : event.location
+              const address =
+                commaIdx !== -1
+                  ? event.location.slice(commaIdx + 1).trim()
+                  : null
+              return (
+                <div className="mb-4">
+                  <p className="font-semibold text-slate-900">{venueName}</p>
+                  {address && (
+                    <p className="text-sm text-slate-500 whitespace-pre-line">
+                      {address.replace(/,\s*/g, '\n')}
+                    </p>
+                  )}
+                </div>
+              )
+            })()}
+
+            {/* Embedded map */}
+            <div className="mb-6 overflow-hidden rounded-xl border border-slate-200">
+              <iframe
+                title="Event location on Google Maps"
+                src={`https://maps.google.com/maps?q=${encodeURIComponent(event.location)}&output=embed`}
+                className="h-72 w-full"
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+              />
+            </div>
+
+            {/* Transport options */}
+            <div className="border-t border-slate-100 pt-5">
+              <h3 className="mb-4 text-base font-bold text-slate-900">
+                How would you like to get there?
+              </h3>
+              <ul className="space-y-3">
+                {(
+                  [
+                    { label: 'Driving',          mode: 'driving',   Icon: Car        },
+                    { label: 'Public transport', mode: 'transit',   Icon: Bus        },
+                    { label: 'Cycling',          mode: 'bicycling', Icon: Bike       },
+                    { label: 'Walking',          mode: 'walking',   Icon: Footprints },
+                  ] as const
+                ).map(({ label, mode, Icon }) => (
+                  <li key={mode}>
+                    <a
+                      href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(event.location)}&travelmode=${mode}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 text-sm text-indigo-600 hover:text-indigo-800 hover:underline"
+                    >
+                      <Icon className="h-5 w-5 shrink-0" />
+                      {label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
         </TabsContent>
 
         {/* Announcements */}

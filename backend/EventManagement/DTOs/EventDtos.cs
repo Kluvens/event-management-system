@@ -10,7 +10,8 @@ public record CreateEventRequest(
     decimal Price,
     bool IsPublic,
     int CategoryId,
-    List<int>? TagIds
+    List<int>? TagIds,
+    string? ImageUrl
 );
 
 public record UpdateEventRequest(
@@ -23,7 +24,8 @@ public record UpdateEventRequest(
     decimal Price,
     bool IsPublic,
     int CategoryId,
-    List<int>? TagIds
+    List<int>? TagIds,
+    string? ImageUrl
 );
 
 public record PostponeEventRequest(DateTime NewStartDate, DateTime NewEndDate);
@@ -47,7 +49,8 @@ public record EventResponse(
     string CreatedByName,
     int CategoryId,
     string CategoryName,
-    List<string> Tags
+    List<string> Tags,
+    string? ImageUrl
 );
 
 public record EventStatsResponse(

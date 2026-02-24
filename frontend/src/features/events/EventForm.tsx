@@ -1,7 +1,9 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { ImagePlus, X, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -15,7 +17,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
+import { AustralianAddressInput } from '@/components/AustralianAddressInput'
 import { useCategories, useTags } from '@/api/tagsCategories'
+import { api } from '@/api/axios'
 import type { CreateEventRequest, Event } from '@/types'
 
 const schema = z
@@ -30,6 +34,7 @@ const schema = z
     isPublic: z.boolean(),
     categoryId: z.coerce.number().min(1, 'Select a category'),
     tagIds: z.array(z.number()),
+    imageUrl: z.string().nullable().optional(),
   })
   .refine((d) => new Date(d.endDate) > new Date(d.startDate), {
     message: 'End date must be after start date',
@@ -58,6 +63,12 @@ export function EventForm({
   const { data: categories = [] } = useCategories()
   const { data: tags = [] } = useTags()
 
+  const [imagePreview, setImagePreview] = useState<string | null>(
+    defaultValues?.imageUrl ?? null
+  )
+  const [isUploading, setIsUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
   const {
     register,
     handleSubmit,
@@ -78,6 +89,7 @@ export function EventForm({
       isPublic: defaultValues?.isPublic ?? true,
       categoryId: defaultValues?.categoryId ?? 0,
       tagIds: [],
+      imageUrl: defaultValues?.imageUrl ?? null,
     },
   })
 
@@ -102,11 +114,43 @@ export function EventForm({
     )
   }
 
+  async function handleImageFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Show local preview immediately
+    const objectUrl = URL.createObjectURL(file)
+    setImagePreview(objectUrl)
+
+    setIsUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const response = await api.post<{ url: string }>('/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      setValue('imageUrl', response.data.url)
+    } catch {
+      toast.error('Image upload failed. Please try again.')
+      setImagePreview(defaultValues?.imageUrl ?? null)
+      setValue('imageUrl', defaultValues?.imageUrl ?? null)
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  function handleRemoveImage() {
+    setImagePreview(null)
+    setValue('imageUrl', null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
   function submit(data: FormData) {
     onSubmit({
       ...data,
       startDate: new Date(data.startDate).toISOString(),
       endDate: new Date(data.endDate).toISOString(),
+      imageUrl: data.imageUrl ?? null,
     })
   }
 
@@ -115,6 +159,57 @@ export function EventForm({
 
   return (
     <form onSubmit={handleSubmit(submit)} className="space-y-6">
+      {/* Event Image */}
+      <div className="space-y-1.5">
+        <Label className={lbl}>Event Image</Label>
+        {imagePreview ? (
+          <div className="relative overflow-hidden rounded-xl border border-slate-200">
+            <img
+              src={imagePreview}
+              alt="Event preview"
+              className="h-52 w-full object-cover"
+            />
+            {isUploading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                <Loader2 className="h-8 w-8 animate-spin text-white" />
+              </div>
+            )}
+            {!isUploading && (
+              <button
+                type="button"
+                onClick={handleRemoveImage}
+                className="absolute right-2 top-2 rounded-full bg-black/50 p-1 text-white transition-colors hover:bg-black/70"
+                aria-label="Remove image"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="flex h-40 w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 text-slate-400 transition-colors hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-500"
+          >
+            <ImagePlus className="h-8 w-8" />
+            <span className="text-sm font-medium">Upload event image</span>
+            <span className="text-xs">JPEG, PNG, WebP or GIF · max 5 MB</span>
+          </button>
+        )}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          className="hidden"
+          onChange={handleImageFile}
+        />
+        {!imagePreview && (
+          <p className="text-xs text-slate-500">
+            A default image based on the event category will be used if none is uploaded.
+          </p>
+        )}
+      </div>
+
       {/* Title */}
       <div className="space-y-1.5">
         <Label htmlFor="title" className={lbl}>
@@ -144,15 +239,22 @@ export function EventForm({
         )}
       </div>
 
-      {/* Location */}
+      {/* Location — Australian address autocomplete */}
       <div className="space-y-1.5">
         <Label htmlFor="location" className={lbl}>
           Location
         </Label>
-        <Input
-          id="location"
-          placeholder="Sydney Convention Centre"
-          {...register('location')}
+        <Controller
+          control={control}
+          name="location"
+          render={({ field }) => (
+            <AustralianAddressInput
+              id="location"
+              value={field.value}
+              onChange={field.onChange}
+              placeholder="ICC Sydney, Darling Harbour…"
+            />
+          )}
         />
         {errors.location && <p className={err}>{errors.location.message}</p>}
       </div>
@@ -283,7 +385,7 @@ export function EventForm({
         />
       </div>
 
-      <Button type="submit" className="w-full" disabled={isLoading}>
+      <Button type="submit" className="w-full" disabled={isLoading || isUploading}>
         {isLoading ? 'Saving…' : submitLabel}
       </Button>
     </form>
