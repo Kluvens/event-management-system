@@ -16,15 +16,24 @@
 
 ## Overview
 
-The Event Management System is a RESTful backend API built with ASP.NET Core 9. It supports a full event lifecycle — from creation and publication through booking, attendance, and post-event review — with a multi-tier role system, organizer dashboard, and an admin control panel.
+The Event Management System is a full-stack web application consisting of:
+
+- **Backend** — a RESTful API built with ASP.NET Core 9, supporting a full event lifecycle from creation through booking, attendance, and post-event review, with a multi-tier role system, organiser dashboard, and admin control panel.
+- **Frontend** — a React 18 SPA (Vite + TypeScript) that consumes the REST API with role-aware routing, TanStack Query for server state, and shadcn/ui components.
+
+For detailed documentation see:
+- [FRONTEND.md](FRONTEND.md) — frontend architecture, routing, state management, dev guide
+- [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) — full table definitions, ER diagram, design decisions
 
 ---
 
 ## Technology Stack
 
+### Backend
+
 | Layer | Technology | Rationale |
 |---|---|---|
-| Runtime | .NET 9 / C# 13 | Minimal APIs friendly, performance improvements |
+| Runtime | .NET 9 / C# 13 | Performance improvements, minimal APIs friendly |
 | Web framework | ASP.NET Core MVC (Controllers) | Attribute-based routing, model binding, DI |
 | ORM | Entity Framework Core 9 | Code-first migrations, LINQ queries |
 | Database | SQLite (dev) | Zero-config, portable, file-based |
@@ -33,16 +42,30 @@ The Event Management System is a RESTful backend API built with ASP.NET Core 9. 
 | Testing | xUnit + `WebApplicationFactory` | In-process integration testing with real HTTP |
 | Test database | In-memory SQLite | Isolated, fast, schema-faithful |
 
+### Frontend
+
+| Concern | Technology | Rationale |
+|---|---|---|
+| Build tool | Vite 6 | Fast HMR, path alias, dev proxy |
+| Framework | React 18 + TypeScript (strict) | Component model, type safety |
+| Routing | React Router DOM v6 | Declarative nested routes, `createBrowserRouter` |
+| Server state | TanStack Query v5 | Caching, background sync, optimistic updates |
+| Client state | Zustand v5 | Minimal boilerplate; `getState()` accessible outside React |
+| UI components | shadcn/ui + Radix UI | Accessible, unstyled primitives + Tailwind CSS |
+| Forms | react-hook-form + Zod | Type-safe validation, minimal re-renders |
+
 ---
 
 ## System Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                     HTTP Clients                        │
-│          (Browser / Mobile / Test runner)               │
+│                React SPA (Vite + TypeScript)            │
+│   React Router │ TanStack Query │ Zustand │ shadcn/ui   │
 └────────────────────────┬────────────────────────────────┘
-                         │ HTTPS / JSON
+                         │ HTTP/JSON  (/api/*)
+                         │ Vite proxy in dev
+                         │ Reverse proxy in prod
 ┌────────────────────────▼────────────────────────────────┐
 │                ASP.NET Core Pipeline                    │
 │                                                         │
@@ -303,6 +326,8 @@ Any user can become an organiser by creating events. Profile fields (bio, websit
 ---
 
 ## Database Design
+
+> Full table definitions, ER diagram, index documentation, and seeded data are in **[DATABASE_SCHEMA.md](DATABASE_SCHEMA.md)**.
 
 ### Schema Decisions
 

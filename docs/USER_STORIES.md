@@ -66,6 +66,18 @@ User stories for the Event Management System, written from the perspective of ea
 
 ---
 
+## Check-in
+
+| ID | User Story | Acceptance Criteria |
+|---|---|---|
+| US-CI01 | As an **attendee**, I want to receive a QR code with my booking so that I can check in at the event venue. | Each confirmed booking is assigned a unique `checkInToken`; the QR code encodes this token and is available in the booking detail and My Bookings page. |
+| US-CI02 | As a **host**, I want to look up an attendee by their QR token so that I can verify their ticket before checking them in. | `GET /api/bookings/checkin/{token}` returns the attendee's name and current check-in status without requiring auth (scanner-friendly). |
+| US-CI03 | As a **host**, I want to mark an attendee as checked in via their QR token so that attendance is recorded automatically. | `POST /api/bookings/checkin/{token}` sets `isCheckedIn = true` and records `checkedInAt`; only the event host or an Admin can call this. |
+| US-CI04 | As a **host**, I want to check in an attendee by their booking ID so that I can handle cases where the QR code is unavailable. | `POST /api/bookings/{id}/checkin` marks attendance by booking ID with the same access restrictions as token check-in. |
+| US-CI05 | As a **host**, I want the check-in dashboard to show real-time confirmed and checked-in counts so that I can monitor attendance during the event. | The attendee table in the organiser dashboard shows per-booking check-in status; counts are visible in the event stats endpoint. |
+
+---
+
 ## Subscriptions
 
 | ID | User Story | Acceptance Criteria |
@@ -74,6 +86,18 @@ User stories for the Event Management System, written from the perspective of ea
 | US-S02 | As an **attendee**, I want to unfollow a host I no longer want to follow. | Returns `204` on success; `404` if not following. |
 | US-S03 | As an **attendee**, I want to view all the hosts I follow so that I can manage my subscriptions. | Returns list of followed hosts ordered by name. |
 | US-S04 | As a **host**, I want to see who follows me so that I can understand my audience. | Returns a list of subscriber names and subscription dates. |
+
+---
+
+## Organiser Profile & Dashboard
+
+| ID | User Story | Acceptance Criteria |
+|---|---|---|
+| US-OP01 | As a **guest or attendee**, I want to view a host's public profile so that I can learn about the organiser and browse their events. | Returns the organiser's bio, website, social handles, follower count, member-since date, and list of published/live/completed events. |
+| US-OP02 | As a **host**, I want to update my public profile (bio, website, social handles) so that attendees can learn more about me. | `PUT /api/organizers/me/profile` updates only the supplied non-null fields; returns `204`. |
+| US-OP03 | As a **host**, I want to view my private dashboard so that I can see aggregate performance across all my events. | Returns total events, attendees, revenue, and checked-in count; split into upcoming and recent event lists, each with per-event booking and revenue figures. |
+| US-OP04 | As a **host**, I want to view and manage the attendee list for each of my events so that I can handle check-ins, refunds, and exports. | Lists all bookings (confirmed and cancelled) with check-in status and QR token; supports search; exportable as CSV. |
+| US-OP05 | As a **host**, I want to cancel any attendee's booking regardless of the 7-day rule so that I can issue refunds at my discretion. | `DELETE /api/organizers/me/events/{eventId}/bookings/{bookingId}` cancels the booking and deducts the attendee's earned loyalty points; returns `204`. |
 
 ---
 

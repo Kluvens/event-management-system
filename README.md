@@ -20,12 +20,12 @@ A full-stack event management platform originally built as the **UNSW COMP3900**
 - [API Reference](docs/API_REFERENCE.md)
 - [Authentication Flow](#authentication-flow)
 - [Loyalty Programme](#loyalty-programme)
-- [Database Schema](#database-schema)
-- [Seeded Data](#seeded-data)
+- [Database Schema](docs/DATABASE_SCHEMA.md)
 - [Testing](#testing)
 - [Original Team](#original-team)
 - [User Stories](docs/USER_STORIES.md)
 - [Architecture & System Design](docs/ARCHITECTURE.md)
+- [Frontend Architecture](docs/FRONTEND.md)
 
 ---
 
@@ -160,9 +160,24 @@ event-management-system/
 │       └── Unit/
 │           ├── Models/UserTests.cs
 │           └── Services/AuthServiceTests.cs
+├── frontend/                              # React 18 SPA (see docs/FRONTEND.md)
+│   ├── src/
+│   │   ├── api/                           # Axios + TanStack Query hooks per domain
+│   │   ├── components/                    # Reusable UI components + shadcn/ui + Aceternity
+│   │   ├── features/                      # Domain-specific composites (forms, tables)
+│   │   ├── layouts/                       # RootLayout, AuthLayout
+│   │   ├── pages/                         # One file per route
+│   │   ├── routes/                        # createBrowserRouter + ProtectedRoute
+│   │   ├── stores/                        # Zustand auth store
+│   │   └── types/                         # TypeScript interfaces mirroring API DTOs
+│   ├── package.json
+│   └── vite.config.ts                     # @/ alias + /api → localhost:5266 proxy
 ├── docs/
-│   ├── ARCHITECTURE.md                              # System design & data flow
-│   └── USER_STORIES.md
+│   ├── ARCHITECTURE.md                    # Full-stack system design & data flow
+│   ├── FRONTEND.md                        # Frontend architecture & dev guide
+│   ├── DATABASE_SCHEMA.md                 # Table definitions, ER diagram, indexes
+│   ├── API_REFERENCE.md                   # Complete REST API endpoint reference
+│   └── USER_STORIES.md                    # Role-based user stories
 ├── swagger.json                           # Generated OpenAPI spec
 └── event-management-system.sln
 ```
@@ -251,127 +266,7 @@ Tier and discount are computed properties on the `User` model and returned with 
 
 ## Database Schema
 
-```
-Users
-  id               INTEGER PK
-  name             TEXT
-  email            TEXT UNIQUE
-  passwordHash     TEXT
-  role             TEXT      ("Attendee" | "Admin" | "SuperAdmin")
-  isSuspended      BOOLEAN
-  loyaltyPoints    INTEGER
-  createdAt        DATETIME
-  bio              TEXT nullable
-  website          TEXT nullable
-  twitterHandle    TEXT nullable
-  instagramHandle  TEXT nullable
-
-Categories
-  id    INTEGER PK
-  name  TEXT
-
-Tags
-  id    INTEGER PK
-  name  TEXT
-
-Events
-  id            INTEGER PK
-  title         TEXT
-  description   TEXT
-  location      TEXT
-  startDate     DATETIME
-  endDate       DATETIME
-  capacity      INTEGER
-  price         DECIMAL(18,2)
-  isPublic      BOOLEAN
-  status        TEXT      ("Draft" | "Published" | "Cancelled" | "Postponed")
-  isSuspended   BOOLEAN
-  postponedDate DATETIME nullable
-  createdAt     DATETIME
-  createdById   INTEGER FK → Users.id   (RESTRICT on delete)
-  categoryId    INTEGER FK → Categories.id
-
-EventTags                          (many-to-many join)
-  eventId  INTEGER FK → Events.id
-  tagId    INTEGER FK → Tags.id
-  PK (eventId, tagId)
-
-Bookings
-  id            INTEGER PK
-  bookedAt      DATETIME
-  status        TEXT  ("Confirmed" | "Cancelled")
-  pointsEarned  INTEGER
-  isCheckedIn   BOOLEAN
-  checkedInAt   DATETIME nullable
-  checkInToken  TEXT nullable UNIQUE
-  userId        INTEGER FK → Users.id
-  eventId       INTEGER FK → Events.id
-  UNIQUE (userId, eventId)
-
-Reviews
-  id         INTEGER PK
-  rating     INTEGER  (1–5)
-  comment    TEXT
-  isPinned   BOOLEAN
-  createdAt  DATETIME
-  eventId    INTEGER FK → Events.id
-  userId     INTEGER FK → Users.id
-  UNIQUE (eventId, userId)
-
-ReviewReplies
-  id         INTEGER PK
-  comment    TEXT
-  createdAt  DATETIME
-  reviewId   INTEGER FK → Reviews.id
-  userId     INTEGER FK → Users.id
-
-ReviewVotes                        (composite PK)
-  reviewId  INTEGER FK → Reviews.id
-  userId    INTEGER FK → Users.id
-  isLike    BOOLEAN
-  PK (reviewId, userId)
-
-HostSubscriptions                  (composite PK)
-  subscriberId  INTEGER FK → Users.id  (RESTRICT)
-  hostId        INTEGER FK → Users.id  (RESTRICT)
-  subscribedAt  DATETIME
-  PK (subscriberId, hostId)
-
-Announcements
-  id         INTEGER PK
-  title      TEXT
-  message    TEXT
-  createdAt  DATETIME
-  eventId    INTEGER FK → Events.id
-```
-
-Migrations are managed by EF Core and applied automatically at startup.
-
----
-
-## Seeded Data
-
-### Categories
-
-| ID | Name |
-|----|------|
-| 1 | Conference |
-| 2 | Workshop |
-| 3 | Concert |
-| 4 | Sports |
-| 5 | Networking |
-| 6 | Other |
-
-### Tags
-
-| ID | Name | ID | Name |
-|----|------|----|------|
-| 1 | Music | 7 | Education |
-| 2 | Technology | 8 | Entertainment |
-| 3 | Business | 9 | Gaming |
-| 4 | Arts | 10 | Outdoor |
-| 5 | Food & Drink | 11 | Charity |
-| 6 | Health & Wellness | 12 | Family |
+Full table definitions, ER diagram, constraint documentation, design decisions, and seeded reference data are in **[docs/DATABASE_SCHEMA.md](docs/DATABASE_SCHEMA.md)**.
 
 ---
 
