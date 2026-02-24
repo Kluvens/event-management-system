@@ -1,0 +1,95 @@
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { useLogin } from '@/api/auth'
+
+const schema = z.object({
+  email: z.string().email('Enter a valid email'),
+  password: z.string().min(1, 'Password is required'),
+})
+
+type FormData = z.infer<typeof schema>
+
+export function LoginForm() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const from =
+    (location.state as { from?: { pathname: string } })?.from?.pathname ?? '/'
+  const login = useLogin()
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<FormData>({ resolver: zodResolver(schema) })
+
+  async function onSubmit(data: FormData) {
+    await login.mutateAsync(data)
+    navigate(from, { replace: true })
+  }
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-white">Welcome back</h1>
+        <p className="mt-1 text-sm text-slate-400">Sign in to your account</p>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="email" className="text-slate-300">
+          Email
+        </Label>
+        <Input
+          id="email"
+          type="email"
+          placeholder="you@example.com"
+          autoComplete="email"
+          className="border-slate-700 bg-slate-800 text-white placeholder:text-slate-500 focus:border-indigo-500"
+          {...register('email')}
+        />
+        {errors.email && (
+          <p className="text-xs text-red-400">{errors.email.message}</p>
+        )}
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="password" className="text-slate-300">
+          Password
+        </Label>
+        <Input
+          id="password"
+          type="password"
+          placeholder="••••••••"
+          autoComplete="current-password"
+          className="border-slate-700 bg-slate-800 text-white placeholder:text-slate-500 focus:border-indigo-500"
+          {...register('password')}
+        />
+        {errors.password && (
+          <p className="text-xs text-red-400">{errors.password.message}</p>
+        )}
+      </div>
+
+      <Button
+        type="submit"
+        className="w-full bg-indigo-600 hover:bg-indigo-500"
+        disabled={login.isPending}
+      >
+        {login.isPending ? 'Signing in…' : 'Sign In'}
+      </Button>
+
+      <p className="text-center text-sm text-slate-400">
+        Don&apos;t have an account?{' '}
+        <Link
+          to="/register"
+          className="font-medium text-indigo-400 hover:text-indigo-300"
+        >
+          Sign up
+        </Link>
+      </p>
+    </form>
+  )
+}
