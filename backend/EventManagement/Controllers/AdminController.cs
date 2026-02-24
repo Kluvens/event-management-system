@@ -46,6 +46,7 @@ public class AdminController(AppDbContext db, AuthService auth, IConfiguration c
     [Authorize(Roles = RoleAdmins)]
     [HttpGet("users")]
     public async Task<IActionResult> GetUsers(
+        // get this parameter's value from the URL query string
         [FromQuery] string? search,
         [FromQuery] string? role,
         [FromQuery] bool? isSuspended)
