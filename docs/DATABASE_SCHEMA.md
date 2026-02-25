@@ -21,9 +21,9 @@ The system uses **SQLite** in development (swappable to PostgreSQL/MySQL via con
 erDiagram
     USERS {
         int id PK
+        string cognitoSub "UNIQUE, nullable"
         string name
         string email "UNIQUE"
-        string passwordHash
         string role
         boolean isSuspended
         int loyaltyPoints
@@ -117,6 +117,24 @@ erDiagram
         int eventId FK
     }
 
+    WAITLIST_ENTRIES {
+        int id PK
+        int eventId FK
+        int userId FK
+        int position
+        datetime joinedAt
+    }
+
+    NOTIFICATIONS {
+        int id PK
+        int userId FK
+        string title
+        string message
+        boolean isRead
+        datetime createdAt
+        int eventId "nullable FK"
+    }
+
     USERS ||--o{ EVENTS : "creates"
     USERS ||--o{ BOOKINGS : "makes"
     USERS ||--o{ REVIEWS : "writes"
@@ -124,12 +142,16 @@ erDiagram
     USERS ||--o{ REVIEW_VOTES : "casts"
     USERS ||--o{ HOST_SUBSCRIPTIONS : "subscribes as follower"
     USERS ||--o{ HOST_SUBSCRIPTIONS : "followed as host"
+    USERS ||--o{ WAITLIST_ENTRIES : "queues"
+    USERS ||--o{ NOTIFICATIONS : "receives"
     CATEGORIES ||--o{ EVENTS : "classifies"
     EVENTS ||--o{ EVENT_TAGS : "tagged with"
     TAGS ||--o{ EVENT_TAGS : "applied to"
     EVENTS ||--o{ BOOKINGS : "has"
     EVENTS ||--o{ REVIEWS : "has"
     EVENTS ||--o{ ANNOUNCEMENTS : "has"
+    EVENTS ||--o{ WAITLIST_ENTRIES : "has queue"
+    EVENTS ||--o{ NOTIFICATIONS : "triggers"
     REVIEWS ||--o{ REVIEW_REPLIES : "has"
     REVIEWS ||--o{ REVIEW_VOTES : "receives"
 ```
@@ -140,14 +162,14 @@ erDiagram
 
 ### `Users`
 
-Stores identity, credentials, role, loyalty state, and public organiser profile fields.
+Stores identity, role, loyalty state, and public organiser profile fields. Passwords are **not stored** — authentication is delegated to AWS Cognito.
 
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
 | `id` | INTEGER | PK, auto-increment | |
-| `name` | TEXT | NOT NULL | Display name |
-| `email` | TEXT | NOT NULL, UNIQUE | Used for login |
-| `passwordHash` | TEXT | NOT NULL | BCrypt hash |
+| `cognitoSub` | TEXT | UNIQUE, nullable | Cognito user sub; set on first `GET /api/auth/me` call |
+| `name` | TEXT | NOT NULL | Display name (copied from Cognito on provision) |
+| `email` | TEXT | NOT NULL, UNIQUE | Copied from Cognito on provision |
 | `role` | TEXT | NOT NULL | `"Attendee"` \| `"Admin"` \| `"SuperAdmin"` |
 | `isSuspended` | BOOLEAN | NOT NULL, default `false` | Blocks login when `true` |
 | `loyaltyPoints` | INTEGER | NOT NULL, default `0` | Cumulative; never goes below 0 |
@@ -312,11 +334,44 @@ Broadcast messages attached to an event. Created manually by the host or automat
 
 ---
 
+### `WaitlistEntries`
+
+Position-ordered queue of users waiting for a spot at a sold-out event. When a booking is cancelled, `WaitlistService.PromoteNextAsync` converts the entry at position 1 into a confirmed booking and re-numbers remaining entries.
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| `id` | INTEGER | PK, auto-increment | |
+| `eventId` | INTEGER | FK → `Events.id` CASCADE | |
+| `userId` | INTEGER | FK → `Users.id` CASCADE | |
+| `position` | INTEGER | NOT NULL | 1-based; gaps closed on leave/promotion |
+| `joinedAt` | DATETIME | NOT NULL | UTC |
+
+**Composite unique constraint:** `(EventId, UserId)` — one waitlist slot per user per event.
+
+---
+
+### `Notifications`
+
+Per-user in-app notification. Generated in bulk (fan-out) when a host posts an announcement, and individually when a waitlist user is promoted to a confirmed booking.
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| `id` | INTEGER | PK, auto-increment | |
+| `userId` | INTEGER | FK → `Users.id` CASCADE | Recipient |
+| `title` | TEXT | NOT NULL | Short summary |
+| `message` | TEXT | NOT NULL | Full notification body |
+| `isRead` | BOOLEAN | NOT NULL, default `false` | |
+| `createdAt` | DATETIME | NOT NULL | UTC |
+| `eventId` | INTEGER | FK → `Events.id` SetNull, nullable | Source event; nullable for system notifications |
+
+---
+
 ## Constraints & Indexes
 
 | Table | Index / Constraint | Type | Purpose |
 |---|---|---|---|
-| `Users` | `email` | UNIQUE | Fast login lookup; prevents duplicate accounts |
+| `Users` | `email` | UNIQUE | Fast lookup; prevents duplicate accounts |
+| `Users` | `cognitoSub` | UNIQUE | Fast Cognito sub resolution |
 | `Events` | `createdById` | FK index | Fast "my events" queries |
 | `Events` | `categoryId` | FK index | Fast category filter queries |
 | `Bookings` | `(userId, eventId)` | UNIQUE composite | One booking row per user per event |
@@ -325,6 +380,7 @@ Broadcast messages attached to an event. Created manually by the host or automat
 | `Reviews` | `(eventId, userId)` | UNIQUE composite | One review per user per event |
 | `ReviewVotes` | `(reviewId, userId)` | PK (composite) | One vote per user per review |
 | `HostSubscriptions` | `(subscriberId, hostId)` | PK (composite) | One follow per (follower, host) pair |
+| `WaitlistEntries` | `(EventId, UserId)` | UNIQUE composite | One waitlist slot per user per event |
 
 ---
 
@@ -332,6 +388,8 @@ Broadcast messages attached to an event. Created manually by the host or automat
 
 | Decision | Rationale |
 |---|---|
+| No passwords stored | Delegated to AWS Cognito; reduces attack surface and compliance scope |
+| `cognitoSub` UNIQUE on `Users` | Enables O(1) user resolution from Cognito JWT without scanning by email |
 | `LoyaltyTier` / `LoyaltyDiscount` not persisted | Always derivable from `loyaltyPoints`; eliminates sync bugs |
 | `displayStatus` not persisted | Derived from stored `status` + current time + booking count; kept in the DTO/query layer |
 | `checkInToken` UNIQUE index | Enables O(1) QR lookup without a table scan |
@@ -339,6 +397,10 @@ Broadcast messages attached to an event. Created manually by the host or automat
 | `Review(eventId, userId)` unique composite | Enforces one review per user per event at the DB level |
 | `ReviewVote` composite PK | One vote record per (review, user) pair; upsert semantics for vote changes |
 | `HostSubscription` composite PK | One follow record per (subscriber, host) pair |
+| `WaitlistEntry(EventId, UserId)` unique composite | Prevents duplicate waitlist entries at the DB level |
+| `Notification.eventId` → `SetNull` on delete | Preserves notification text even if the source event is later deleted |
+| Waitlist promotion via `PromoteNextAsync` | Decoupled from the cancellation path; re-numbers remaining positions and sends a notification atomically |
+| Notification fan-out via `AddRange` bulk insert | Single round-trip per announcement regardless of attendee count |
 | `Event.createdById` → `RESTRICT` on delete | Prevents accidental cascade-delete of all events when a user is removed |
 | `HostSubscription.subscriberId/hostId` → `RESTRICT` | Prevents orphaned subscription rows; users must be explicitly deleted separately |
 | Categories and tags seeded via EF `HasData` | Consistent reference data across all environments; avoids migration drift |

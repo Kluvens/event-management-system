@@ -10,7 +10,9 @@ All request/response bodies are JSON. Endpoints marked with `[Auth]` require a `
 
 - [Authentication](#authentication-endpoints)
 - [Events](#event-endpoints)
+- [Waitlist](#waitlist-endpoints)
 - [Bookings](#booking-endpoints)
+- [Notifications](#notification-endpoints)
 - [Reviews](#review-endpoints)
 - [Subscriptions](#subscription-endpoints)
 - [Organizers](#organizer-endpoints)
@@ -23,49 +25,26 @@ All request/response bodies are JSON. Endpoints marked with `[Auth]` require a `
 
 ## Authentication Endpoints
 
-### `POST /api/auth/register`
+Authentication is handled by **AWS Cognito**. The backend validates Cognito-issued JWTs; there are no registration or login endpoints on this API.
 
-Create a new attendee account.
+### `GET /api/auth/me` `[Auth]`
 
-**Request body**
-```json
-{
-  "name": "Alice Smith",
-  "email": "alice@example.com",
-  "password": "MyPassword123"
-}
-```
+Retrieve (or auto-provision on first login) the local app-specific profile for the authenticated Cognito user. Call this immediately after sign-in to obtain `userId`, `role`, and loyalty data.
 
 **Response `200 OK`**
 ```json
 {
-  "token": "<jwt>",
   "userId": 1,
   "name": "Alice Smith",
   "email": "alice@example.com",
-  "role": "Attendee"
+  "role": "Attendee",
+  "loyaltyPoints": 0,
+  "loyaltyTier": "Standard",
+  "isSuspended": false
 }
 ```
 
-**Response `409 Conflict`** — email already in use.
-
----
-
-### `POST /api/auth/login`
-
-Authenticate an existing user.
-
-**Request body**
-```json
-{
-  "email": "alice@example.com",
-  "password": "MyPassword123"
-}
-```
-
-**Response `200 OK`** — same shape as register.
-
-**Response `401 Unauthorized`** — wrong email or password, or account is suspended.
+**Response `403 Forbidden`** — account is suspended.
 
 ---
 
@@ -136,6 +115,35 @@ Host/admin dashboard for an event.
 ```
 
 **Response `403 Forbidden`** — not the owner or admin.
+
+---
+
+### `GET /api/events/{id}/analytics` `[Auth]`
+
+Extended analytics for an event: 30-day daily booking trend, waitlist size, occupancy rate, and revenue. Only the event owner or an admin can access this.
+
+**Response `200 OK`**
+```json
+{
+  "eventId": 1,
+  "title": "Tech Conference 2026",
+  "totalCapacity": 200,
+  "confirmedBookings": 45,
+  "cancelledBookings": 3,
+  "waitlistCount": 7,
+  "occupancyRate": 22.5,
+  "totalRevenue": 2249.55,
+  "averageRating": 4.2,
+  "reviewCount": 12,
+  "dailyBookings": [
+    { "date": "2026-02-01", "count": 3 },
+    { "date": "2026-02-02", "count": 5 }
+  ]
+}
+```
+
+**Response `403 Forbidden`** — not the owner or admin.
+**Response `404 Not Found`**
 
 ---
 
@@ -252,6 +260,48 @@ Post an announcement. Only the event creator or an `Admin` can post.
 
 ---
 
+## Waitlist Endpoints
+
+Waitlist endpoints allow attendees to queue for sold-out events. When a confirmed booking is cancelled, the first waitlisted user is automatically promoted to a confirmed booking and a notification is sent.
+
+All waitlist endpoints require authentication.
+
+### `GET /api/events/{id}/waitlist/position` `[Auth]`
+
+Get the authenticated user's current position in the waitlist for an event.
+
+**Response `200 OK`**
+```json
+{
+  "eventId": 1,
+  "position": 3,
+  "joinedAt": "2026-02-25T10:00:00Z"
+}
+```
+
+**Response `404 Not Found`** — user is not on the waitlist.
+
+---
+
+### `POST /api/events/{id}/waitlist` `[Auth]`
+
+Join the waitlist for a sold-out event.
+
+**Response `204 No Content`**
+**Response `400 Bad Request`** — event is not sold out (has available capacity).
+**Response `409 Conflict`** — user is already on the waitlist or already has a confirmed booking.
+
+---
+
+### `DELETE /api/events/{id}/waitlist` `[Auth]`
+
+Leave the waitlist. Remaining entries are re-numbered to close the gap.
+
+**Response `204 No Content`**
+**Response `404 Not Found`** — user is not on the waitlist.
+
+---
+
 ## Booking Endpoints
 
 All booking endpoints require authentication.
@@ -350,6 +400,74 @@ Check in an attendee via their QR token. Only the event host or an admin can cal
 **Response `400 Bad Request`** — booking is cancelled or already checked in.
 **Response `403 Forbidden`**
 **Response `404 Not Found`**
+
+---
+
+### `GET /api/bookings/{id}/ics` `[Auth]`
+
+Download a confirmed booking as an RFC 5545 iCalendar (`.ics`) file, suitable for importing into any calendar application (Apple Calendar, Google Calendar, Outlook, etc.). Only the booking owner can download.
+
+**Response `200 OK`** — `text/calendar` file with `Content-Disposition: attachment; filename="event.ics"`.
+
+Contains a `VEVENT` block with the event title, description, location, start/end dates, and booking UID.
+
+**Response `403 Forbidden`** — not the booking owner.
+**Response `404 Not Found`** — booking not found or is cancelled.
+
+---
+
+## Notification Endpoints
+
+In-app notifications are generated automatically when a host posts an announcement (fan-out to all confirmed attendees) and when a waitlist user is promoted to a confirmed booking.
+
+All notification endpoints require authentication.
+
+### `GET /api/notifications` `[Auth]`
+
+List the authenticated user's notifications, most recent first (up to 50).
+
+**Response `200 OK`**
+```json
+[
+  {
+    "id": 12,
+    "title": "New announcement: Tech Conference 2026",
+    "message": "Venue change — The event has moved to the main hall.",
+    "isRead": false,
+    "createdAt": "2026-02-25T09:00:00Z",
+    "eventId": 1
+  }
+]
+```
+
+---
+
+### `GET /api/notifications/unread-count` `[Auth]`
+
+Get the number of unread notifications. Used by the UI to display the badge count.
+
+**Response `200 OK`**
+```json
+{ "count": 3 }
+```
+
+---
+
+### `PATCH /api/notifications/{id}/read` `[Auth]`
+
+Mark a single notification as read.
+
+**Response `204 No Content`**
+**Response `403 Forbidden`** — notification does not belong to the user.
+**Response `404 Not Found`**
+
+---
+
+### `PATCH /api/notifications/read-all` `[Auth]`
+
+Mark all of the authenticated user's notifications as read.
+
+**Response `204 No Content`**
 
 ---
 
@@ -908,11 +1026,15 @@ System-wide statistics dashboard.
 
 ## Dev Utility Endpoints
 
-These endpoints are only active when `ASPNETCORE_ENVIRONMENT=Development`. They return `404` in all other environments. All three endpoints require an `Admin` or `SuperAdmin` JWT.
+These endpoints are only active when `ASPNETCORE_ENVIRONMENT=Development`. They return `404` in all other environments.
+
+The data-management endpoints (`reset`, `seed`, `events/{id}`) require an `Admin` or `SuperAdmin` JWT.
+
+The auth endpoints (`register`, `login`, `admin/register`) are unauthenticated and exist solely to support integration tests, which cannot call a live Cognito pool.
 
 ### `DELETE /api/dev/reset` `[Admin]`
 
-Deletes all user-generated rows (users, events, bookings, reviews, announcements, subscriptions). Seeded categories and tags are preserved.
+Deletes all user-generated rows (users, events, bookings, reviews, announcements, subscriptions, waitlist entries, notifications). Seeded categories and tags are preserved.
 
 **Response `200 OK`** — `{ "message": "All data reset. Seeded categories and tags are intact." }`
 
@@ -933,3 +1055,57 @@ Creates two users (host + attendee), two events (one upcoming, one past), and on
 
 **Response `200 OK`** — credentials and IDs for each created resource.
 **Response `409 Conflict`** — data already exists; call reset first.
+
+---
+
+### `POST /api/dev/auth/register`
+
+Register a new attendee and receive a test JWT (HS256). **Tests only — not for production use.**
+
+**Request body**
+```json
+{
+  "name": "Alice Smith",
+  "email": "alice@test.com",
+  "password": "Password1!"
+}
+```
+
+**Response `200 OK`** — `{ "token": "<hs256-jwt>" }`.
+**Response `409 Conflict`** — email already in use.
+
+---
+
+### `POST /api/dev/auth/login`
+
+Authenticate an existing dev user and receive a test JWT.
+
+**Request body**
+```json
+{
+  "email": "alice@test.com",
+  "password": "Password1!"
+}
+```
+
+**Response `200 OK`** — `{ "token": "<hs256-jwt>" }`.
+**Response `401 Unauthorized`** — wrong credentials.
+
+---
+
+### `POST /api/dev/admin/register`
+
+Register a `SuperAdmin` dev user using the configured registration key.
+
+**Request body**
+```json
+{
+  "name": "Root Admin",
+  "email": "admin@test.com",
+  "password": "Password1!",
+  "registrationKey": "<AdminSettings:RegistrationKey>"
+}
+```
+
+**Response `200 OK`** — `{ "token": "<hs256-jwt>" }`.
+**Response `401 Unauthorized`** — wrong key.

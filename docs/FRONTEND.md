@@ -35,6 +35,7 @@ A single-page application built with **Vite + React 18 + TypeScript** that consu
 | Visual effects | Aceternity UI | Spotlight, BackgroundBeams, HoverBorderGradient (inlined) |
 | Charts | Recharts | Organiser dashboard BarChart; Admin PieChart + BarChart |
 | QR codes | qrcode.react | `QRCodeSVG` on check-in tokens |
+| QR scanning | @zxing/browser | `BrowserQRCodeReader` for live camera scanning on `CheckInScannerPage` |
 | Animations | framer-motion | Hero section fade-in |
 | Date utilities | date-fns | Formatting, relative time |
 | Notifications | Sonner | `toast.success` / `toast.error` |
@@ -100,11 +101,14 @@ frontend/
     │   ├── axios.ts        # Axios instance + interceptors
     │   ├── auth.ts
     │   ├── events.ts
-    │   ├── bookings.ts
+    │   ├── bookings.ts     # Includes downloadIcs (blob response)
     │   ├── reviews.ts
     │   ├── subscriptions.ts
     │   ├── organizers.ts
     │   ├── admin.ts
+    │   ├── notifications.ts  # useNotifications, useUnreadCount, useMarkRead, useMarkAllRead
+    │   ├── waitlist.ts       # useWaitlistPosition, useJoinWaitlist, useLeaveWaitlist
+    │   ├── analytics.ts      # useEventAnalytics(eventId, enabled)
     │   └── tagsCategories.ts
     │
     ├── hooks/
@@ -128,6 +132,7 @@ frontend/
     │   ├── EventCard.tsx
     │   ├── EventFilters.tsx
     │   ├── Navbar.tsx
+    │   ├── NotificationBell.tsx  # Bell icon + unread badge + dropdown (polls every 30 s)
     │   ├── StatusBadge.tsx
     │   ├── LoadingSpinner.tsx
     │   └── ConfirmDialog.tsx
@@ -145,12 +150,13 @@ frontend/
         ├── HomePage.tsx
         ├── LoginPage.tsx
         ├── RegisterPage.tsx
-        ├── EventDetailPage.tsx
+        ├── EventDetailPage.tsx        # Waitlist join/leave UI for SoldOut events
         ├── CreateEventPage.tsx
         ├── EditEventPage.tsx
-        ├── MyBookingsPage.tsx
-        ├── OrganizerDashboardPage.tsx
+        ├── MyBookingsPage.tsx         # "Add to Calendar" .ics download button
+        ├── OrganizerDashboardPage.tsx # Analytics LineChart panel per event
         ├── OrganizerProfilePage.tsx
+        ├── CheckInScannerPage.tsx     # Live camera QR scanner + manual token input
         ├── AdminPage.tsx
         └── NotFoundPage.tsx
 ```
@@ -174,6 +180,7 @@ Routes are defined with `createBrowserRouter` in `src/routes/index.tsx`.
 | `/events/:id/edit` | `EditEventPage` | Authenticated (owner or Admin) |
 | `/bookings` | `MyBookingsPage` | Authenticated |
 | `/dashboard` | `OrganizerDashboardPage` | Authenticated |
+| `/checkin` | `CheckInScannerPage` | Authenticated |
 | `/admin` | `AdminPage` | Admin or SuperAdmin |
 | `*` | `NotFoundPage` | — |
 
@@ -304,7 +311,8 @@ Pages           — One per route; orchestrate data + layout
 
 | Component | Purpose |
 |---|---|
-| `Navbar` | Sticky header with logo, nav links, avatar dropdown; mobile Sheet |
+| `Navbar` | Sticky header with logo, nav links, `NotificationBell`, and avatar dropdown; mobile Sheet |
+| `NotificationBell` | Bell icon with red unread badge; dropdown showing last 8 notifications with `formatDistanceToNow` timestamps; polls unread count every 30 s via `refetchInterval` |
 | `EventCard` | Displays event summary with `HoverBorderGradient` border effect |
 | `EventFilters` | Debounced search + category/tag/sort/date-range controls |
 | `StatusBadge` | Maps `EventStatus` → coloured pill; `Live` status shows animated ping dot |
