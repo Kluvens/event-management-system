@@ -4,6 +4,9 @@ using EventManagement.DTOs;
 
 namespace EventManagement.Tests.Helpers;
 
+// Minimal local types for test auth responses
+file record TestAuthResponse(string Token, int UserId);
+
 /// <summary>
 /// Convenience wrappers used by integration test classes.
 /// </summary>
@@ -11,50 +14,53 @@ public static class ApiClient
 {
     private static readonly System.Text.Json.JsonSerializerOptions CaseInsensitive =
         new() { PropertyNameCaseInsensitive = true };
+
     // ── Auth ──────────────────────────────────────────────────────────
 
     public static Task<HttpResponseMessage> RegisterAsync(
         HttpClient client, string name, string email, string password) =>
-        client.PostAsJsonAsync("/api/auth/register",
-            new RegisterRequest(name, email, password));
+        client.PostAsJsonAsync("/api/dev/auth/register",
+            new DevRegisterRequest(name, email, password));
 
     public static async Task<(string Token, int UserId)> RegisterAndGetIdAsync(
         HttpClient client, string name, string email, string password)
     {
         var response = await RegisterAsync(client, name, email, password);
         response.EnsureSuccessStatusCode();
-        var auth = await response.Content.ReadFromJsonAsync<AuthResponse>();
+        var auth = await response.Content.ReadFromJsonAsync<TestAuthResponse>(CaseInsensitive);
         return (auth!.Token, auth.UserId);
     }
 
     public static async Task<string> RegisterAndLoginAsync(
         HttpClient client, string name, string email, string password)
     {
-        await RegisterAsync(client, name, email, password);
-        return await LoginAsync(client, email, password);
+        var response = await RegisterAsync(client, name, email, password);
+        response.EnsureSuccessStatusCode();
+        var auth = await response.Content.ReadFromJsonAsync<TestAuthResponse>(CaseInsensitive);
+        return auth!.Token;
     }
 
     public static async Task<string> LoginAsync(
         HttpClient client, string email, string password)
     {
-        var response = await client.PostAsJsonAsync("/api/auth/login",
-            new LoginRequest(email, password));
+        var response = await client.PostAsJsonAsync("/api/dev/auth/login",
+            new DevLoginRequest(email, password));
         response.EnsureSuccessStatusCode();
-        var auth = await response.Content.ReadFromJsonAsync<AuthResponse>();
+        var auth = await response.Content.ReadFromJsonAsync<TestAuthResponse>(CaseInsensitive);
         return auth!.Token;
     }
 
     /// <summary>
-    /// Creates a SuperAdmin account via the key-protected registration endpoint
+    /// Creates a SuperAdmin account via the key-protected dev endpoint
     /// and returns the JWT token.
     /// </summary>
     public static async Task<string> RegisterSuperAdminAsync(
         HttpClient client, string name, string email, string password, string registrationKey)
     {
-        var response = await client.PostAsJsonAsync("/api/admin/register",
-            new { name, email, password, registrationKey });
+        var response = await client.PostAsJsonAsync("/api/dev/admin/register",
+            new DevAdminRegisterRequest(name, email, password, registrationKey));
         response.EnsureSuccessStatusCode();
-        var auth = await response.Content.ReadFromJsonAsync<AuthResponse>();
+        var auth = await response.Content.ReadFromJsonAsync<TestAuthResponse>(CaseInsensitive);
         return auth!.Token;
     }
 
@@ -93,11 +99,10 @@ public static class ApiClient
         var createResp = await client.PostAsJsonAsync("/api/events", new CreateEventRequest(
             title, description, location,
             start, start.AddHours(2),
-            capacity, price, isPublic, categoryId, tagIds));
+            capacity, price, isPublic, categoryId, tagIds, null));
 
         if (!draft && createResp.IsSuccessStatusCode)
         {
-            // Read and re-wrap the content so callers can still deserialize it
             var json = await createResp.Content.ReadAsStringAsync();
             createResp.Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
 

@@ -20,6 +20,7 @@ var cognitoIssuer   = $"https://cognito-idp.{cognitoRegion}.amazonaws.com/{cogni
 
 // Auth services
 builder.Services.AddScoped<ICognitoUserResolver, CognitoUserResolver>();
+builder.Services.AddScoped<IWaitlistService, WaitlistService>();
 
 // Storage: "Local" (default for dev) or "S3" (production)
 var storageProvider = builder.Configuration["Storage:Provider"] ?? "Local";

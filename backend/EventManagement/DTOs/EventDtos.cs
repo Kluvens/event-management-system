@@ -64,3 +64,19 @@ public record EventStatsResponse(
     double AverageRating,
     int ReviewCount
 );
+
+public record DailyBookingCount(DateOnly Date, int Count);
+
+public record EventAnalyticsResponse(
+    int EventId,
+    string Title,
+    int TotalCapacity,
+    int ConfirmedBookings,
+    int CancelledBookings,
+    int WaitlistCount,
+    double OccupancyRate,
+    decimal TotalRevenue,
+    double AverageRating,
+    int ReviewCount,
+    List<DailyBookingCount> DailyBookings
+);

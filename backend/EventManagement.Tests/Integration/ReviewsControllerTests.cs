@@ -42,7 +42,7 @@ public class ReviewsControllerTests : IDisposable
                 $"Past Event {suffix}", "A past event", "Sydney",
                 DateTime.UtcNow.AddDays(-5),     // started in the past
                 DateTime.UtcNow.AddDays(-5).AddHours(2),
-                100, 0m, true, 1, null));
+                100, 0m, true, 1, null, null));
         var ev = await createResp.Content.ReadFromJsonAsync<EventResponse>();
         Assert.NotNull(ev);
 

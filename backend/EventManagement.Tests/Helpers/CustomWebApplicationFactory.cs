@@ -1,10 +1,12 @@
 using EventManagement.Data;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.Tokens;
 
 namespace EventManagement.Tests.Helpers;
 
@@ -51,6 +53,24 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 
             services.AddDbContext<AppDbContext>(options =>
                 options.UseSqlite(_connection));
+
+            // Override Cognito RS256 JWT validation with test HS256 key
+            services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
+            {
+                options.Authority = null;
+                options.MetadataAddress = null!;
+                options.RequireHttpsMetadata = false;
+                options.MapInboundClaims = false;
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer           = false,
+                    ValidateAudience         = false,
+                    ValidateLifetime         = false,
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey         = new SymmetricSecurityKey(
+                        System.Text.Encoding.UTF8.GetBytes(EventManagement.Controllers.DevController.TestJwtKey)),
+                };
+            });
         });
     }
 

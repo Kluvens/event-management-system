@@ -54,6 +54,7 @@ import {
   usePostAnnouncement,
 } from '@/api/events'
 import { useMineBookings, useCreateBooking, useCancelBooking } from '@/api/bookings'
+import { useWaitlistPosition, useJoinWaitlist, useLeaveWaitlist } from '@/api/waitlist'
 import {
   useReviews,
   useCreateReview,
@@ -112,6 +113,9 @@ export function EventDetailPage() {
   const voteReview = useVoteReview(eventId)
   const follow = useFollowHost()
   const unfollow = useUnfollowHost()
+  const { data: waitlistPos } = useWaitlistPosition(eventId)
+  const joinWaitlist = useJoinWaitlist(eventId)
+  const leaveWaitlist = useLeaveWaitlist(eventId)
 
   const [cancelBookingConfirm, setCancelBookingConfirm] = useState(false)
   const [cancelEventConfirm, setCancelEventConfirm] = useState(false)
@@ -333,7 +337,29 @@ export function EventDetailPage() {
                 </Button>
               </div>
             ) : event.displayStatus === 'SoldOut' ? (
-              <Button disabled>Sold Out</Button>
+              waitlistPos ? (
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-slate-600">
+                    You&apos;re #{waitlistPos.position} on the waitlist
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => leaveWaitlist.mutate()}
+                    disabled={leaveWaitlist.isPending}
+                  >
+                    Leave Waitlist
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  variant="outline"
+                  onClick={() => joinWaitlist.mutate()}
+                  disabled={joinWaitlist.isPending}
+                >
+                  {joinWaitlist.isPending ? 'Joining…' : 'Join Waitlist'}
+                </Button>
+              )
             ) : event.displayStatus === 'Cancelled' ? (
               <Button disabled variant="outline">
                 Event Cancelled

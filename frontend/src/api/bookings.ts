@@ -18,6 +18,9 @@ export const bookingsApi = {
     api.get<CheckInInfo>(`/bookings/checkin/${token}`).then((r) => r.data),
 
   checkinByToken: (token: string) => api.post(`/bookings/checkin/${token}`),
+
+  downloadIcs: (id: number) =>
+    api.get(`/bookings/${id}/ics`, { responseType: 'blob' }).then((r) => r.data as Blob),
 }
 
 export function useMineBookings() {

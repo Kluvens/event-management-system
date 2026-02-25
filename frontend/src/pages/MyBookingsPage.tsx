@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Calendar, MapPin, QrCode } from 'lucide-react'
+import { Calendar, MapPin, QrCode, CalendarPlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -12,10 +12,19 @@ import {
 } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
-import { useMineBookings, useCancelBooking } from '@/api/bookings'
+import { useMineBookings, useCancelBooking, bookingsApi } from '@/api/bookings'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import { QRCodeSVG } from 'qrcode.react'
 import type { Booking } from '@/types'
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
 
 export function MyBookingsPage() {
   const { data: bookings = [], isPending } = useMineBookings()
@@ -91,6 +100,19 @@ export function MyBookingsPage() {
               >
                 <QrCode className="h-3.5 w-3.5" />
                 QR Code
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5"
+                onClick={() =>
+                  bookingsApi
+                    .downloadIcs(booking.id)
+                    .then((blob) => downloadBlob(blob, `event-${booking.eventId}.ics`))
+                }
+              >
+                <CalendarPlus className="h-3.5 w-3.5" />
+                Add to Calendar
               </Button>
               <Button
                 size="sm"

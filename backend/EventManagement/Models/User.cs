@@ -41,4 +41,6 @@ public class User
     public ICollection<Review> Reviews { get; set; } = new List<Review>();
     public ICollection<HostSubscription> Subscriptions { get; set; } = new List<HostSubscription>();
     public ICollection<HostSubscription> Subscribers { get; set; } = new List<HostSubscription>();
+    public ICollection<WaitlistEntry> WaitlistEntries { get; set; } = new List<WaitlistEntry>();
+    public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
 }

@@ -29,6 +29,7 @@ import {
 import { signOut } from 'aws-amplify/auth'
 import { useAuthStore } from '@/stores/authStore'
 import { getInitials } from '@/lib/utils'
+import { NotificationBell } from '@/components/NotificationBell'
 
 export function Navbar() {
   const navigate = useNavigate()
@@ -118,6 +119,8 @@ export function Navbar() {
                 <Plus className="h-3.5 w-3.5" />
                 Create Event
               </Button>
+
+              <NotificationBell />
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

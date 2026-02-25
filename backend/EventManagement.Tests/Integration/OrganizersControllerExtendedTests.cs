@@ -44,7 +44,7 @@ public sealed class OrganizersControllerExtendedTests : IAsyncLifetime, IDisposa
                 "Past Ext", "A past event", "Sydney",
                 DateTime.UtcNow.AddDays(-10),
                 DateTime.UtcNow.AddDays(-10).AddHours(2),
-                100, 0m, true, 1, null));
+                100, 0m, true, 1, null, null));
         var pastEv = await pastCreateResp.Content.ReadFromJsonAsync<EventResponse>();
         _pastEventId = pastEv!.Id;
         await _hostClient.PostAsync($"/api/events/{_pastEventId}/publish", null);

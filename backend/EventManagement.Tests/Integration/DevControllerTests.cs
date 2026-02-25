@@ -194,7 +194,7 @@ public sealed class DevControllerTests : IAsyncLifetime, IDisposable
         await _authedClient.DeleteAsync("/api/dev/reset");
         await _authedClient.PostAsync("/api/dev/seed", null);
 
-        var loginResp = await _client.PostAsJsonAsync("/api/auth/login",
+        var loginResp = await _client.PostAsJsonAsync("/api/dev/auth/login",
             new { Email = "host@example.com", Password = "Password1!" });
         Assert.Equal(HttpStatusCode.OK, loginResp.StatusCode);
 

@@ -16,6 +16,7 @@ import { EditEventPage } from '@/pages/EditEventPage'
 import { OrganizerDashboardPage } from '@/pages/OrganizerDashboardPage'
 import { OrganizerProfilePage } from '@/pages/OrganizerProfilePage'
 import { AdminPage } from '@/pages/AdminPage'
+import { CheckInScannerPage } from '@/pages/CheckInScannerPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 
 export const router = createBrowserRouter([
@@ -36,6 +37,7 @@ export const router = createBrowserRouter([
           { path: 'events/create', element: <CreateEventPage /> },
           { path: 'events/:id/edit', element: <EditEventPage /> },
           { path: 'dashboard', element: <OrganizerDashboardPage /> },
+          { path: 'checkin', element: <CheckInScannerPage /> },
         ],
       },
 

@@ -222,7 +222,7 @@ public sealed class EventsControllerTests : IDisposable
         var start = DateTime.UtcNow.AddDays(30);
         var updateResp = await authed.PutAsJsonAsync($"/api/events/{created.Id}",
             new UpdateEventRequest("New Title", "Desc", "Location",
-                start, start.AddHours(2), 100, 0m, true, 1, null));
+                start, start.AddHours(2), 100, 0m, true, 1, null, null));
 
         Assert.Equal(HttpStatusCode.NoContent, updateResp.StatusCode);
 
@@ -249,7 +249,7 @@ public sealed class EventsControllerTests : IDisposable
         var start = DateTime.UtcNow.AddDays(30);
         var response = await otherClient.PutAsJsonAsync($"/api/events/{created.Id}",
             new UpdateEventRequest("Hijacked", "Desc", "Loc",
-                start, start.AddHours(2), 100, 0m, true, 1, null));
+                start, start.AddHours(2), 100, 0m, true, 1, null, null));
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }

@@ -5,6 +5,9 @@ using Xunit;
 
 namespace EventManagement.Tests.Integration;
 
+// Local type for deserializing dev login/register responses
+file record TestAuthResponse(string Token, int UserId);
+
 public class SubscriptionsControllerTests : IDisposable
 {
     private readonly CustomWebApplicationFactory _factory;
@@ -50,18 +53,18 @@ public class SubscriptionsControllerTests : IDisposable
     {
         var hostToken = await ApiClient.RegisterAndLoginAsync(
             _client, "SubHost1", "subhost1@sub.test", "Pass!");
-        var hostClient = ApiClient.WithToken(_factory, hostToken);
+        _ = ApiClient.WithToken(_factory, hostToken);
 
-        // Get host ID by calling subscriptions/subscribers (need another way...)
         // Register a subscriber
         var subscriberToken = await ApiClient.RegisterAndLoginAsync(
             _client, "Subscriber1", "subscriber1@sub.test", "Pass!");
         var subscriberClient = ApiClient.WithToken(_factory, subscriberToken);
 
-        // Get host's user ID from login response
-        var loginResp = await _client.PostAsJsonAsync("/api/auth/login",
+        // Get host's user ID from dev login response
+        var loginResp = await _client.PostAsJsonAsync("/api/dev/auth/login",
             new { Email = "subhost1@sub.test", Password = "Pass!" });
-        var auth = await loginResp.Content.ReadFromJsonAsync<EventManagement.DTOs.AuthResponse>();
+        var auth = await loginResp.Content.ReadFromJsonAsync<TestAuthResponse>(
+            new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
         var response = await subscriberClient.PostAsync(
             $"/api/subscriptions/{auth!.UserId}", null);
@@ -76,9 +79,10 @@ public class SubscriptionsControllerTests : IDisposable
             _client, "SelfSub", "selfsub@sub.test", "Pass!");
         var authed = ApiClient.WithToken(_factory, token);
 
-        var loginResp = await _client.PostAsJsonAsync("/api/auth/login",
+        var loginResp = await _client.PostAsJsonAsync("/api/dev/auth/login",
             new { Email = "selfsub@sub.test", Password = "Pass!" });
-        var auth = await loginResp.Content.ReadFromJsonAsync<EventManagement.DTOs.AuthResponse>();
+        var auth = await loginResp.Content.ReadFromJsonAsync<TestAuthResponse>(
+            new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
         var response = await authed.PostAsync($"/api/subscriptions/{auth!.UserId}", null);
 
@@ -104,9 +108,10 @@ public class SubscriptionsControllerTests : IDisposable
             _client, "SubHost2", "subhost2@sub.test", "Pass!");
         _ = ApiClient.WithToken(_factory, hostToken);
 
-        var loginResp = await _client.PostAsJsonAsync("/api/auth/login",
+        var loginResp = await _client.PostAsJsonAsync("/api/dev/auth/login",
             new { Email = "subhost2@sub.test", Password = "Pass!" });
-        var hostAuth = await loginResp.Content.ReadFromJsonAsync<EventManagement.DTOs.AuthResponse>();
+        var hostAuth = await loginResp.Content.ReadFromJsonAsync<TestAuthResponse>(
+            new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
         var subscriberToken = await ApiClient.RegisterAndLoginAsync(
             _client, "Subscriber2", "subscriber2@sub.test", "Pass!");
@@ -128,9 +133,10 @@ public class SubscriptionsControllerTests : IDisposable
             _client, "SubHost3", "subhost3@sub.test", "Pass!");
         _ = ApiClient.WithToken(_factory, hostToken);
 
-        var loginResp = await _client.PostAsJsonAsync("/api/auth/login",
+        var loginResp = await _client.PostAsJsonAsync("/api/dev/auth/login",
             new { Email = "subhost3@sub.test", Password = "Pass!" });
-        var hostAuth = await loginResp.Content.ReadFromJsonAsync<EventManagement.DTOs.AuthResponse>();
+        var hostAuth = await loginResp.Content.ReadFromJsonAsync<TestAuthResponse>(
+            new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
         var subscriberToken = await ApiClient.RegisterAndLoginAsync(
             _client, "Subscriber3", "subscriber3@sub.test", "Pass!");
@@ -150,9 +156,10 @@ public class SubscriptionsControllerTests : IDisposable
             _client, "SubHost4", "subhost4@sub.test", "Pass!");
         _ = ApiClient.WithToken(_factory, hostToken);
 
-        var loginResp = await _client.PostAsJsonAsync("/api/auth/login",
+        var loginResp = await _client.PostAsJsonAsync("/api/dev/auth/login",
             new { Email = "subhost4@sub.test", Password = "Pass!" });
-        var hostAuth = await loginResp.Content.ReadFromJsonAsync<EventManagement.DTOs.AuthResponse>();
+        var hostAuth = await loginResp.Content.ReadFromJsonAsync<TestAuthResponse>(
+            new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
         var subscriberToken = await ApiClient.RegisterAndLoginAsync(
             _client, "Subscriber4", "subscriber4@sub.test", "Pass!");
@@ -172,9 +179,10 @@ public class SubscriptionsControllerTests : IDisposable
             _client, "SubHost5", "subhost5@sub.test", "Pass!");
         var hostClient = ApiClient.WithToken(_factory, hostToken);
 
-        var loginResp = await _client.PostAsJsonAsync("/api/auth/login",
+        var loginResp = await _client.PostAsJsonAsync("/api/dev/auth/login",
             new { Email = "subhost5@sub.test", Password = "Pass!" });
-        var hostAuth = await loginResp.Content.ReadFromJsonAsync<EventManagement.DTOs.AuthResponse>();
+        var hostAuth = await loginResp.Content.ReadFromJsonAsync<TestAuthResponse>(
+            new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
         // A subscriber subscribes
         var subscriberToken = await ApiClient.RegisterAndLoginAsync(

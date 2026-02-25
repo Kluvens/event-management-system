@@ -11,7 +11,7 @@ namespace EventManagement.Controllers;
 [ApiController]
 [Route("api/bookings")]
 [Authorize]
-public class BookingsController(AppDbContext db, ICognitoUserResolver resolver)
+public class BookingsController(AppDbContext db, ICognitoUserResolver resolver, IWaitlistService waitlist)
     : AppControllerBase(resolver)
 {
     private const string StatusConfirmed = "Confirmed";
@@ -133,6 +133,7 @@ public class BookingsController(AppDbContext db, ICognitoUserResolver resolver)
         booking.PointsEarned = 0;
 
         await db.SaveChangesAsync();
+        await waitlist.PromoteNextAsync(booking.EventId);
         return NoContent();
     }
 
@@ -167,7 +168,37 @@ public class BookingsController(AppDbContext db, ICognitoUserResolver resolver)
         }
 
         await db.SaveChangesAsync();
+        await waitlist.PromoteNextAsync(eventId);
         return NoContent();
+    }
+
+    // ── Calendar export (.ics) ─────────────────────────────────────
+
+    [HttpGet("{id}/ics")]
+    public async Task<IActionResult> DownloadIcs(int id)
+    {
+        var userId = await GetCurrentUserIdAsync();
+
+        var booking = await db.Bookings
+            .Include(b => b.Event)
+            .FirstOrDefaultAsync(b => b.Id == id);
+
+        if (booking is null) return NotFound();
+        if (booking.UserId != userId) return Forbid();
+        if (booking.Status == StatusCancelled)
+            return BadRequest(new { message = "Booking is cancelled." });
+
+        var ev    = booking.Event;
+        var uid   = $"booking-{booking.Id}@eventhub";
+        var start = ev.StartDate.ToString("yyyyMMddTHHmmssZ");
+        var end   = ev.EndDate.ToString("yyyyMMddTHHmmssZ");
+        var now   = DateTime.UtcNow.ToString("yyyyMMddTHHmmssZ");
+        var desc  = ev.Description.Replace("\r", "").Replace("\n", "\\n");
+
+        var ics = $"BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//EventHub//EventHub//EN\r\nBEGIN:VEVENT\r\nUID:{uid}\r\nDTSTAMP:{now}\r\nDTSTART:{start}\r\nDTEND:{end}\r\nSUMMARY:{ev.Title}\r\nLOCATION:{ev.Location}\r\nDESCRIPTION:{desc}\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
+
+        var bytes = System.Text.Encoding.UTF8.GetBytes(ics);
+        return File(bytes, "text/calendar", $"event-{ev.Id}.ics");
     }
 
     // ── Check-in by booking ID ──────────────────────────────────────

@@ -55,9 +55,9 @@ public sealed class AdminControllerExtendedTests : IAsyncLifetime, IDisposable
     // ── POST /api/admin/register — wrong key ─────────────────────────
 
     [Fact]
-    public async Task Register_WrongKey_Returns401()
+    public async Task Register_WrongKey_Returns403()
     {
-        var response = await _client.PostAsJsonAsync("/api/admin/register", new
+        var response = await _client.PostAsJsonAsync("/api/dev/admin/register", new
         {
             name = "Hacker",
             email = "hacker@adm.test",
@@ -65,14 +65,14 @@ public sealed class AdminControllerExtendedTests : IAsyncLifetime, IDisposable
             registrationKey = "wrong-key"
         });
 
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     [Fact]
     public async Task Register_DuplicateEmail_Returns409()
     {
         // Register first time
-        await _client.PostAsJsonAsync("/api/admin/register", new
+        await _client.PostAsJsonAsync("/api/dev/admin/register", new
         {
             name = "Dup SA",
             email = "dupsa@adm.test",
@@ -81,7 +81,7 @@ public sealed class AdminControllerExtendedTests : IAsyncLifetime, IDisposable
         });
 
         // Second registration with same email
-        var response = await _client.PostAsJsonAsync("/api/admin/register", new
+        var response = await _client.PostAsJsonAsync("/api/dev/admin/register", new
         {
             name = "Dup SA 2",
             email = "dupsa@adm.test",

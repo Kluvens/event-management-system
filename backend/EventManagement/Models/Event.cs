@@ -29,4 +29,6 @@ public class Event
     public ICollection<EventTag> EventTags { get; set; } = new List<EventTag>();
     public ICollection<Review> Reviews { get; set; } = new List<Review>();
     public ICollection<Announcement> Announcements { get; set; } = new List<Announcement>();
+    public ICollection<WaitlistEntry> WaitlistEntries { get; set; } = new List<WaitlistEntry>();
+    public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
 }

@@ -1,7 +1,13 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using EventManagement.Data;
+using EventManagement.DTOs;
+using EventManagement.Models;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 
 namespace EventManagement.Controllers;
 
@@ -87,13 +93,15 @@ public class DevController(AppDbContext db, IWebHostEnvironment env) : Controlle
             Name         = "Alice Host",
             Email        = "host@example.com",
             PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password1!"),
+            CognitoSub   = Guid.NewGuid().ToString(),
             Role         = "Attendee"
         };
         var attendee = new EventManagement.Models.User
         {
             Name         = "Bob Attendee",
             Email        = "attendee@example.com",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password1!")
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password1!"),
+            CognitoSub   = Guid.NewGuid().ToString(),
         };
 
         db.Users.AddRange(host, attendee);
@@ -158,5 +166,78 @@ public class DevController(AppDbContext db, IWebHostEnvironment env) : Controlle
             upcomingEventId = upcoming.Id,
             pastEventId     = past.Id
         });
+    }
+
+    public const string TestJwtKey = "test-secret-key-for-integration-tests-only-not-for-production";
+
+    // ── Test-only auth endpoints (dev mode only) ───────────────────
+
+    [HttpPost("auth/register")]
+    public async Task<IActionResult> TestRegister([FromBody] DevRegisterRequest req)
+    {
+        if (!env.IsDevelopment()) return NotFound();
+        if (await db.Users.AnyAsync(u => u.Email == req.Email))
+            return Conflict(new { message = "Email already taken." });
+        var cognitoSub = Guid.NewGuid().ToString();
+        var user = new User
+        {
+            Name         = req.Name,
+            Email        = req.Email,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password),
+            CognitoSub   = cognitoSub,
+            Role         = "Attendee",
+        };
+        db.Users.Add(user);
+        await db.SaveChangesAsync();
+        return Ok(new { Token = MintToken(user), UserId = user.Id });
+    }
+
+    [HttpPost("auth/login")]
+    public async Task<IActionResult> TestLogin([FromBody] DevLoginRequest req)
+    {
+        if (!env.IsDevelopment()) return NotFound();
+        var user = await db.Users.SingleOrDefaultAsync(u => u.Email == req.Email);
+        if (user is null || !BCrypt.Net.BCrypt.Verify(req.Password, user.PasswordHash))
+            return Unauthorized();
+        return Ok(new { Token = MintToken(user), UserId = user.Id });
+    }
+
+    [HttpPost("admin/register")]
+    public async Task<IActionResult> TestRegisterAdmin([FromBody] DevAdminRegisterRequest req)
+    {
+        if (!env.IsDevelopment()) return NotFound();
+        if (req.RegistrationKey != TestJwtKey && req.RegistrationKey != "test-admin-key")
+            return Forbid();
+        if (await db.Users.AnyAsync(u => u.Email == req.Email))
+            return Conflict(new { message = "Email already taken." });
+        var cognitoSub = Guid.NewGuid().ToString();
+        var user = new User
+        {
+            Name         = req.Name,
+            Email        = req.Email,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password),
+            CognitoSub   = cognitoSub,
+            Role         = "SuperAdmin",
+        };
+        db.Users.Add(user);
+        await db.SaveChangesAsync();
+        return Ok(new { Token = MintToken(user), UserId = user.Id });
+    }
+
+    private static string MintToken(User user)
+    {
+        var key   = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(TestJwtKey));
+        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        var sub   = user.CognitoSub ?? user.Id.ToString();
+        var claims = new List<Claim>
+        {
+            new("sub",            sub),
+            new("email",          user.Email),
+            new("name",           user.Name),
+            new("cognito:groups", user.Role),
+        };
+        var token = new JwtSecurityToken(claims: claims, signingCredentials: creds,
+            expires: DateTime.UtcNow.AddHours(24));
+        return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }

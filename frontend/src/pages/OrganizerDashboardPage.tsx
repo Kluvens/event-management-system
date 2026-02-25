@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import {
   BarChart,
   Bar,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -48,6 +50,7 @@ import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { AttendeeTable } from '@/features/organizer/AttendeeTable'
 import { useOrganizerDashboard, useUpdateProfile } from '@/api/organizers'
 import { useSubscribers } from '@/api/subscriptions'
+import { useEventAnalytics } from '@/api/analytics'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import type { DashboardEvent, UpdateOrganizerProfileRequest } from '@/types'
 
@@ -86,6 +89,12 @@ function StatCard({
 
 function ExpandableEventRow({ event }: { event: DashboardEvent }) {
   const [expanded, setExpanded] = useState(false)
+  const { data: analytics } = useEventAnalytics(event.eventId, expanded)
+
+  const trendData = (analytics?.dailyBookings ?? []).map((d) => ({
+    date: d.date.slice(5), // MM-DD
+    bookings: d.count,
+  }))
 
   return (
     <>
@@ -120,6 +129,58 @@ function ExpandableEventRow({ event }: { event: DashboardEvent }) {
       {expanded && (
         <TableRow>
           <TableCell colSpan={6} className="bg-slate-50 p-4">
+            {analytics && (
+              <div className="mb-4 space-y-3">
+                <div className="flex flex-wrap gap-4 text-sm">
+                  <span className="text-slate-600">
+                    Occupancy:{' '}
+                    <span className="font-semibold text-slate-900">
+                      {analytics.occupancyRate.toFixed(1)}%
+                    </span>
+                  </span>
+                  <span className="text-slate-600">
+                    Waitlist:{' '}
+                    <span className="font-semibold text-slate-900">{analytics.waitlistCount}</span>
+                  </span>
+                  <span className="text-slate-600">
+                    Avg rating:{' '}
+                    <span className="font-semibold text-slate-900">
+                      {analytics.averageRating > 0
+                        ? `${analytics.averageRating.toFixed(1)} ★`
+                        : 'No reviews'}
+                    </span>
+                  </span>
+                  <span className="text-slate-600">
+                    Revenue:{' '}
+                    <span className="font-semibold text-slate-900">
+                      {formatCurrency(analytics.totalRevenue)}
+                    </span>
+                  </span>
+                </div>
+                {trendData.length > 0 && (
+                  <div>
+                    <p className="mb-1 text-xs font-medium text-slate-500">
+                      Daily bookings (last 30 days)
+                    </p>
+                    <ResponsiveContainer width="100%" height={120}>
+                      <LineChart data={trendData} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                        <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+                        <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
+                        <Tooltip />
+                        <Line
+                          type="monotone"
+                          dataKey="bookings"
+                          stroke="#6366f1"
+                          strokeWidth={2}
+                          dot={false}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </div>
+            )}
             <AttendeeTable eventId={event.eventId} />
           </TableCell>
         </TableRow>

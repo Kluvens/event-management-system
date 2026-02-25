@@ -314,3 +314,47 @@ export interface LoyaltyPointsResponse {
   loyaltyPoints: number
   loyaltyTier: string
 }
+
+// ─── Waitlist ──────────────────────────────────────────────────────────────────
+
+export interface WaitlistPosition {
+  eventId: number
+  position: number
+  joinedAt: string
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+export interface Notification {
+  id: number
+  title: string
+  message: string
+  isRead: boolean
+  createdAt: string
+  eventId: number | null
+}
+
+export interface UnreadCountResponse {
+  count: number
+}
+
+// ─── Analytics ────────────────────────────────────────────────────────────────
+
+export interface DailyBookingCount {
+  date: string
+  count: number
+}
+
+export interface EventAnalytics {
+  eventId: number
+  title: string
+  totalCapacity: number
+  confirmedBookings: number
+  cancelledBookings: number
+  waitlistCount: number
+  occupancyRate: number
+  totalRevenue: number
+  averageRating: number
+  reviewCount: number
+  dailyBookings: DailyBookingCount[]
+}

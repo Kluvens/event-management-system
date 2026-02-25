@@ -37,7 +37,7 @@ public sealed class AdminControllerTests : IAsyncLifetime, IDisposable
     public async Task InitializeAsync()
     {
         // SuperAdmin — registered via key-protected endpoint
-        var saResp = await _client.PostAsJsonAsync("/api/admin/register", new
+        var saResp = await _client.PostAsJsonAsync("/api/dev/admin/register", new
         {
             name = "Super Admin",
             email = "sa@test.com",

@@ -17,6 +17,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<HostSubscription> HostSubscriptions => Set<HostSubscription>();
     public DbSet<Announcement> Announcements => Set<Announcement>();
     public DbSet<UserFavorite> UserFavorites => Set<UserFavorite>();
+    public DbSet<WaitlistEntry> WaitlistEntries => Set<WaitlistEntry>();
+    public DbSet<Notification> Notifications => Set<Notification>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -120,6 +122,36 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .WithMany(u => u.Subscribers)
             .HasForeignKey(hs => hs.HostId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // ── WaitlistEntries ────────────────────────────────────────
+        modelBuilder.Entity<WaitlistEntry>()
+            .HasIndex(w => new { w.EventId, w.UserId })
+            .IsUnique();
+
+        modelBuilder.Entity<WaitlistEntry>()
+            .HasOne(w => w.Event)
+            .WithMany(e => e.WaitlistEntries)
+            .HasForeignKey(w => w.EventId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<WaitlistEntry>()
+            .HasOne(w => w.User)
+            .WithMany(u => u.WaitlistEntries)
+            .HasForeignKey(w => w.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // ── Notifications ──────────────────────────────────────────
+        modelBuilder.Entity<Notification>()
+            .HasOne(n => n.User)
+            .WithMany(u => u.Notifications)
+            .HasForeignKey(n => n.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Notification>()
+            .HasOne(n => n.Event)
+            .WithMany(e => e.Notifications)
+            .HasForeignKey(n => n.EventId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         // ── Seed data ──────────────────────────────────────────────
         modelBuilder.Entity<Category>().HasData(

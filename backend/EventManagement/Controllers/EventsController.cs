@@ -345,11 +345,136 @@ public class EventsController(AppDbContext db, ICognitoUserResolver resolver)
         };
 
         db.Announcements.Add(announcement);
+
+        // Fan-out in-app notification to all confirmed attendees
+        var attendeeIds = await db.Bookings
+            .Where(b => b.EventId == id && b.Status == StatusConfirmed)
+            .Select(b => b.UserId)
+            .Distinct()
+            .ToListAsync();
+
+        db.Notifications.AddRange(attendeeIds.Select(uid => new Notification
+        {
+            UserId  = uid,
+            Title   = $"New announcement: {ev.Title}",
+            Message = $"{req.Title} — {req.Message}",
+            EventId = id,
+        }));
+
         await db.SaveChangesAsync();
 
         return CreatedAtAction(nameof(GetAnnouncements), new { id },
             new AnnouncementResponse(announcement.Id, id, ev.Title,
                 announcement.Title, announcement.Message, announcement.CreatedAt));
+    }
+
+    // ── Analytics ──────────────────────────────────────────────────
+
+    [Authorize]
+    [HttpGet("{id}/analytics")]
+    public async Task<IActionResult> GetAnalytics(int id)
+    {
+        var userId = await GetCurrentUserIdAsync();
+        var role   = GetCurrentRole();
+
+        var ev = await db.Events
+            .Include(e => e.Bookings)
+            .Include(e => e.Reviews)
+            .Include(e => e.WaitlistEntries)
+            .FirstOrDefaultAsync(e => e.Id == id);
+
+        if (ev is null) return NotFound();
+        if (ev.CreatedById != userId && role != RoleAdmin && role != RoleSuperAdmin) return Forbid();
+
+        var confirmed  = ev.Bookings.Count(b => b.Status == StatusConfirmed);
+        var cancelled  = ev.Bookings.Count(b => b.Status == StatusCancelled);
+        var revenue    = confirmed * ev.Price;
+        var avgRating  = ev.Reviews.Count > 0 ? ev.Reviews.Average(r => r.Rating) : 0.0;
+        var waitlist   = ev.WaitlistEntries.Count;
+
+        // Daily confirmed bookings over past 30 days
+        var since = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-29));
+        var daily = ev.Bookings
+            .Where(b => b.Status == StatusConfirmed && DateOnly.FromDateTime(b.BookedAt) >= since)
+            .GroupBy(b => DateOnly.FromDateTime(b.BookedAt))
+            .Select(g => new DailyBookingCount(g.Key, g.Count()))
+            .OrderBy(d => d.Date)
+            .ToList();
+
+        return Ok(new EventAnalyticsResponse(
+            ev.Id, ev.Title, ev.Capacity,
+            confirmed, cancelled, waitlist,
+            ev.Capacity > 0 ? (double)confirmed / ev.Capacity * 100 : 0,
+            revenue, avgRating, ev.Reviews.Count, daily));
+    }
+
+    // ── Waitlist ───────────────────────────────────────────────────
+
+    [Authorize]
+    [HttpGet("{id}/waitlist/position")]
+    public async Task<IActionResult> GetWaitlistPosition(int id)
+    {
+        var userId = await GetCurrentUserIdAsync();
+
+        var entry = await db.WaitlistEntries
+            .FirstOrDefaultAsync(w => w.EventId == id && w.UserId == userId);
+
+        if (entry is null) return NotFound();
+        return Ok(new WaitlistPositionResponse(id, entry.Position, entry.JoinedAt));
+    }
+
+    [Authorize]
+    [HttpPost("{id}/waitlist")]
+    public async Task<IActionResult> JoinWaitlist(int id)
+    {
+        var userId = await GetCurrentUserIdAsync();
+
+        var ev = await db.Events.Include(e => e.Bookings).FirstOrDefaultAsync(e => e.Id == id);
+        if (ev is null) return NotFound();
+        if (ev.IsSuspended) return BadRequest(new { message = "Event is unavailable." });
+        if (ev.Status == StatusCancelled) return BadRequest(new { message = "Event is cancelled." });
+        if (ev.Status == StatusDraft) return BadRequest(new { message = "Event is not published." });
+
+        // Only allow joining waitlist if event is full
+        var confirmedCount = ev.Bookings.Count(b => b.Status == StatusConfirmed);
+        if (confirmedCount < ev.Capacity)
+            return BadRequest(new { message = "Event still has available spots. Book directly." });
+
+        // Check already has active booking
+        if (await db.Bookings.AnyAsync(b => b.UserId == userId && b.EventId == id && b.Status == StatusConfirmed))
+            return Conflict(new { message = "You already have a booking for this event." });
+
+        if (await db.WaitlistEntries.AnyAsync(w => w.UserId == userId && w.EventId == id))
+            return Conflict(new { message = "Already on waitlist." });
+
+        var position = await db.WaitlistEntries.CountAsync(w => w.EventId == id) + 1;
+        db.WaitlistEntries.Add(new WaitlistEntry { EventId = id, UserId = userId, Position = position });
+        await db.SaveChangesAsync();
+
+        return Created(string.Empty, new WaitlistPositionResponse(id, position, DateTime.UtcNow));
+    }
+
+    [Authorize]
+    [HttpDelete("{id}/waitlist")]
+    public async Task<IActionResult> LeaveWaitlist(int id)
+    {
+        var userId = await GetCurrentUserIdAsync();
+
+        var entry = await db.WaitlistEntries
+            .FirstOrDefaultAsync(w => w.EventId == id && w.UserId == userId);
+        if (entry is null) return NotFound();
+
+        var removedPosition = entry.Position;
+        db.WaitlistEntries.Remove(entry);
+
+        // Re-number entries after the removed one
+        var subsequent = await db.WaitlistEntries
+            .Where(w => w.EventId == id && w.Position > removedPosition)
+            .ToListAsync();
+        foreach (var w in subsequent) w.Position--;
+
+        await db.SaveChangesAsync();
+        return NoContent();
     }
 
     // ── Helpers ────────────────────────────────────────────────────
