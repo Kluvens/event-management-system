@@ -1,7 +1,6 @@
 using EventManagement.Data;
 using EventManagement.DTOs;
 using EventManagement.Models;
-using EventManagement.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -10,33 +9,11 @@ namespace EventManagement.Controllers;
 
 [ApiController]
 [Route("api/admin")]
-public class AdminController(AppDbContext db, AuthService auth, IConfiguration config) : ControllerBase
+public class AdminController(AppDbContext db) : ControllerBase
 {
-    private const string RoleSuperAdmin = "SuperAdmin";
-    private const string RoleAdmins     = "Admin,SuperAdmin";
+    private const string RoleSuperAdmin  = "SuperAdmin";
+    private const string RoleAdmins      = "Admin,SuperAdmin";
     private const string StatusConfirmed = "Confirmed";
-
-    // ── Registration ───────────────────────────────────────────────
-
-    /// <summary>
-    /// Register a new SuperAdmin. Requires the admin registration key configured in appsettings.
-    /// </summary>
-    [HttpPost("register")]
-    public async Task<IActionResult> Register(AdminRegisterRequest req)
-    {
-        var configuredKey = config["AdminSettings:RegistrationKey"]!;
-        var result = await auth.RegisterSuperAdminAsync(req, configuredKey);
-
-        if (result is null)
-        {
-            // Distinguish wrong key from duplicate email
-            if (req.RegistrationKey != configuredKey)
-                return Unauthorized(new { message = "Invalid registration key." });
-            return Conflict(new { message = "Email already in use." });
-        }
-
-        return Ok(result);
-    }
 
     // ── Users ──────────────────────────────────────────────────────
 

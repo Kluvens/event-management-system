@@ -1,3 +1,4 @@
+import './lib/amplify' // must be first — configures Amplify before anything else
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'

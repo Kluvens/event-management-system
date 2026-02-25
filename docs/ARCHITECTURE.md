@@ -37,6 +37,7 @@ For detailed documentation see:
 | Web framework | ASP.NET Core MVC (Controllers) | Attribute-based routing, model binding, DI |
 | ORM | Entity Framework Core 9 | Code-first migrations, LINQ queries |
 | Database | SQLite (dev) | Zero-config, portable, file-based |
+| Object storage | AWS S3 + AWS SDK for .NET | Durable, scalable storage for uploads and media |
 | Auth | JWT Bearer (HS256) | Stateless, standard, easy to validate |
 | Password hashing | BCrypt.Net-Next | Adaptive cost, industry standard |
 | Testing | xUnit + `WebApplicationFactory` | In-process integration testing with real HTTP |
@@ -91,6 +92,11 @@ For detailed documentation see:
                                                │
 ┌──────────────────────────────────────────────▼──────────┐
 │                    SQLite Database                      │
+└─────────────────────────────────────────────────────────┘
+             ▲
+             │
+┌────────────┴────────────────────────────────────────────┐
+│              AWS S3 Object Storage (Uploads)            │
 └─────────────────────────────────────────────────────────┘
 ```
 

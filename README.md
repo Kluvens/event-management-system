@@ -1,8 +1,6 @@
 # Event Management System
 
-A full-stack event management platform originally built as the **UNSW COMP3900** capstone project by team **UnderTheC**. After graduating, I revisited the codebase to make it more complete, robust, and production-ready — expanding the feature set, hardening the API design, and adding a comprehensive test suite.
-
-> **Note:** This README covers the backend only. Frontend documentation will be added separately.
+A full-stack event management platform originally built as the **UNSW COMP3900** capstone project by team **UnderTheC**. After graduating, I revisited the codebase to make it more complete, robust, and production-ready — expanding the feature set, hardening the API design, adding a comprehensive test suite, and rebuilding the frontend with a modern React + Vite + TypeScript stack.
 
 ---
 
@@ -81,16 +79,38 @@ This project was originally submitted for UNSW COMP3900 (Computer Science Projec
 
 ## Tech Stack
 
+### Backend
+
 | Layer | Technology |
 |---|---|
 | Runtime | .NET 9 (ASP.NET Core) |
 | Language | C# 13 |
 | ORM | Entity Framework Core 9 |
 | Database | SQLite (dev) — swap connection string for PostgreSQL/MySQL in prod |
+| Storage | AWS S3 (via AWS SDK for .NET) for media/file uploads |
 | Auth | JWT Bearer (`System.IdentityModel.Tokens.Jwt`) |
 | Password hashing | BCrypt.Net-Next |
 | API docs | Swashbuckle / OpenAPI 3 |
 | Testing | xUnit · Microsoft.AspNetCore.Mvc.Testing · EF Core InMemory/SQLite |
+
+### Frontend
+
+The frontend lives in `frontend/` and is documented in detail in **[docs/FRONTEND.md](docs/FRONTEND.md)**.
+
+| Concern | Technology |
+|---|---|
+| Build tool | Vite 6 |
+| Framework | React 18 |
+| Language | TypeScript 5 (strict) |
+| Routing | React Router DOM v6 |
+| Server state | TanStack Query v5 |
+| Client state | Zustand v5 |
+| UI components | shadcn/ui + Radix UI |
+| Styling | Tailwind CSS 3 + tailwindcss-animate |
+| Forms & validation | react-hook-form + Zod |
+| Notifications | Sonner |
+| Charts | Recharts |
+| Animations & effects | framer-motion + custom Aceternity UI components |
 
 ---
 

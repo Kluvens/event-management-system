@@ -7,6 +7,8 @@ import { HomePage } from '@/pages/HomePage'
 import { EventDetailPage } from '@/pages/EventDetailPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { RegisterPage } from '@/pages/RegisterPage'
+import { ConfirmEmailPage } from '@/pages/ConfirmEmailPage'
+import { OAuthCallbackPage } from '@/pages/OAuthCallbackPage'
 import { MyBookingsPage } from '@/pages/MyBookingsPage'
 import { FavoritesPage } from '@/pages/FavoritesPage'
 import { CreateEventPage } from '@/pages/CreateEventPage'
@@ -53,4 +55,6 @@ export const router = createBrowserRouter([
       { path: '/register', element: <RegisterPage /> },
     ],
   },
+  { path: '/confirm-email', element: <ConfirmEmailPage /> },
+  { path: '/auth/callback',  element: <OAuthCallbackPage /> },
 ])

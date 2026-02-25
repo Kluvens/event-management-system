@@ -82,7 +82,7 @@ export function EventDetailPage() {
   const { id } = useParams<{ id: string }>()
   const eventId = parseInt(id ?? '0')
   const navigate = useNavigate()
-  const { user, token, isAdmin } = useAuthStore()
+  const { user, isAdmin } = useAuthStore()
 
   const { data: event, isPending, error } = useEvent(eventId)
   const { data: announcements = [] } = useAnnouncements(eventId)
@@ -161,7 +161,7 @@ export function EventDetailPage() {
   const isBookable =
     (event.displayStatus === 'Published' || event.displayStatus === 'Live') &&
     !myBooking &&
-    !!token
+    !!user
   const canReview =
     !!myBooking &&
     event.displayStatus === 'Completed' &&
@@ -293,7 +293,7 @@ export function EventDetailPage() {
               <p className="text-xs text-slate-500">Organizer</p>
             </div>
           </Link>
-          {token && user?.userId !== event.createdById && (
+          {user && user?.userId !== event.createdById && (
             <Button
               size="sm"
               variant={isFollowing ? 'outline' : 'default'}
@@ -312,7 +312,7 @@ export function EventDetailPage() {
         {/* Booking action */}
         {!canManage && (
           <div className="flex flex-wrap gap-3">
-            {!token ? (
+            {!user ? (
               <Button onClick={() => navigate('/login')}>
                 Sign in to Book
               </Button>
@@ -632,7 +632,7 @@ export function EventDetailPage() {
                 <div className="mb-3 flex items-center gap-3 text-xs text-slate-500">
                   <button
                     onClick={() =>
-                      token &&
+                      user &&
                       voteReview.mutate({ reviewId: review.id, isLike: true })
                     }
                     className="flex items-center gap-1 hover:text-emerald-600"
@@ -641,7 +641,7 @@ export function EventDetailPage() {
                   </button>
                   <button
                     onClick={() =>
-                      token &&
+                      user &&
                       voteReview.mutate({ reviewId: review.id, isLike: false })
                     }
                     className="flex items-center gap-1 hover:text-red-500"

@@ -14,7 +14,7 @@ export function OrganizerProfilePage() {
   const { id } = useParams<{ id: string }>()
   const organizerId = parseInt(id ?? '0')
   const navigate = useNavigate()
-  const { user, token } = useAuthStore()
+  const { user } = useAuthStore()
 
   const { data: profile, isPending, error } = useOrganizerProfile(organizerId)
   const { data: subscriptions = [] } = useSubscriptions()
@@ -63,7 +63,7 @@ export function OrganizerProfilePage() {
             </div>
           </div>
 
-          {token && !isSelf && (
+          {user && !isSelf && (
             <Button
               variant={isFollowing ? 'outline' : 'default'}
               onClick={() =>

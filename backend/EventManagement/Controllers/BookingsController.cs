@@ -1,9 +1,9 @@
-using System.Security.Claims;
 using EventManagement.Data;
 using EventManagement.DTOs;
 using EventManagement.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using EventManagement.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace EventManagement.Controllers;
@@ -11,7 +11,8 @@ namespace EventManagement.Controllers;
 [ApiController]
 [Route("api/bookings")]
 [Authorize]
-public class BookingsController(AppDbContext db) : ControllerBase
+public class BookingsController(AppDbContext db, ICognitoUserResolver resolver)
+    : AppControllerBase(resolver)
 {
     private const string StatusConfirmed = "Confirmed";
     private const string StatusCancelled = "Cancelled";
@@ -22,7 +23,7 @@ public class BookingsController(AppDbContext db) : ControllerBase
     [HttpGet("mine")]
     public async Task<IActionResult> GetMyBookings()
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var userId = await GetCurrentUserIdAsync();
 
         var bookings = await db.Bookings
             .Include(b => b.Event)
@@ -43,7 +44,7 @@ public class BookingsController(AppDbContext db) : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create(CreateBookingRequest req)
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var userId = await GetCurrentUserIdAsync();
 
         var ev = await db.Events
             .Include(e => e.Bookings)
@@ -111,7 +112,7 @@ public class BookingsController(AppDbContext db) : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> Cancel(int id)
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var userId = await GetCurrentUserIdAsync();
 
         var booking = await db.Bookings.Include(b => b.Event).FirstOrDefaultAsync(b => b.Id == id);
         if (booking is null) return NotFound();
@@ -140,7 +141,7 @@ public class BookingsController(AppDbContext db) : ControllerBase
     [HttpDelete("events/{eventId}/mine")]
     public async Task<IActionResult> CancelAllForEvent(int eventId)
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var userId = await GetCurrentUserIdAsync();
 
         var bookings = await db.Bookings
             .Include(b => b.Event)
@@ -174,8 +175,8 @@ public class BookingsController(AppDbContext db) : ControllerBase
     [HttpPost("{id}/checkin")]
     public async Task<IActionResult> CheckIn(int id)
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var role   = User.FindFirstValue(ClaimTypes.Role);
+        var userId = await GetCurrentUserIdAsync();
+        var role   = GetCurrentRole();
 
         var booking = await db.Bookings.Include(b => b.Event).FirstOrDefaultAsync(b => b.Id == id);
         if (booking is null) return NotFound();
@@ -214,8 +215,8 @@ public class BookingsController(AppDbContext db) : ControllerBase
     [HttpPost("checkin/{token}")]
     public async Task<IActionResult> CheckInViaToken(string token)
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var role   = User.FindFirstValue(ClaimTypes.Role);
+        var userId = await GetCurrentUserIdAsync();
+        var role   = GetCurrentRole();
 
         var booking = await db.Bookings
             .Include(b => b.Event)

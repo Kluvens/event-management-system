@@ -5,7 +5,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useLogin } from '@/api/auth'
+import { useLogin, signInWithGoogle, signInWithFacebook } from '@/api/auth'
 
 const schema = z.object({
   email: z.string().email('Enter a valid email'),
@@ -17,8 +17,7 @@ type FormData = z.infer<typeof schema>
 export function LoginForm() {
   const navigate = useNavigate()
   const location = useLocation()
-  const from =
-    (location.state as { from?: { pathname: string } })?.from?.pathname ?? '/'
+  const from = (location.state as { from?: { pathname: string } })?.from?.pathname ?? '/'
   const login = useLogin()
 
   const {
@@ -51,9 +50,7 @@ export function LoginForm() {
           className="border-slate-700 bg-slate-800 text-white placeholder:text-slate-500 focus:border-indigo-500"
           {...register('email')}
         />
-        {errors.email && (
-          <p className="text-xs text-red-400">{errors.email.message}</p>
-        )}
+        {errors.email && <p className="text-xs text-red-400">{errors.email.message}</p>}
       </div>
 
       <div className="space-y-1.5">
@@ -68,9 +65,7 @@ export function LoginForm() {
           className="border-slate-700 bg-slate-800 text-white placeholder:text-slate-500 focus:border-indigo-500"
           {...register('password')}
         />
-        {errors.password && (
-          <p className="text-xs text-red-400">{errors.password.message}</p>
-        )}
+        {errors.password && <p className="text-xs text-red-400">{errors.password.message}</p>}
       </div>
 
       <Button
@@ -81,12 +76,38 @@ export function LoginForm() {
         {login.isPending ? 'Signing in…' : 'Sign In'}
       </Button>
 
+      {/* Social login */}
+      <div className="relative my-1">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t border-slate-700" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-slate-900 px-2 text-slate-400">Or continue with</span>
+        </div>
+      </div>
+
+      <div className="flex gap-3">
+        <Button
+          type="button"
+          variant="outline"
+          className="flex-1 border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700"
+          onClick={signInWithGoogle}
+        >
+          Google
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          className="flex-1 border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700"
+          onClick={signInWithFacebook}
+        >
+          Facebook
+        </Button>
+      </div>
+
       <p className="text-center text-sm text-slate-400">
         Don&apos;t have an account?{' '}
-        <Link
-          to="/register"
-          className="font-medium text-indigo-400 hover:text-indigo-300"
-        >
+        <Link to="/register" className="font-medium text-indigo-400 hover:text-indigo-300">
           Sign up
         </Link>
       </p>

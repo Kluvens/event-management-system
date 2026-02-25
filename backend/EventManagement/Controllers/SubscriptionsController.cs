@@ -1,8 +1,8 @@
-using System.Security.Claims;
 using EventManagement.Data;
 using EventManagement.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using EventManagement.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace EventManagement.Controllers;
@@ -10,14 +10,15 @@ namespace EventManagement.Controllers;
 [ApiController]
 [Route("api/subscriptions")]
 [Authorize]
-public class SubscriptionsController(AppDbContext db) : ControllerBase
+public class SubscriptionsController(AppDbContext db, ICognitoUserResolver resolver)
+    : AppControllerBase(resolver)
 {
     // ── Hosts I follow ─────────────────────────────────────────────
 
     [HttpGet]
     public async Task<IActionResult> GetMySubscriptions()
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var userId = await GetCurrentUserIdAsync();
 
         var hosts = await db.HostSubscriptions
             .Include(hs => hs.Host)
@@ -34,7 +35,7 @@ public class SubscriptionsController(AppDbContext db) : ControllerBase
     [HttpPost("{hostId}")]
     public async Task<IActionResult> Subscribe(int hostId)
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var userId = await GetCurrentUserIdAsync();
 
         if (userId == hostId)
             return BadRequest(new { message = "You cannot subscribe to yourself." });
@@ -55,7 +56,7 @@ public class SubscriptionsController(AppDbContext db) : ControllerBase
     [HttpDelete("{hostId}")]
     public async Task<IActionResult> Unsubscribe(int hostId)
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var userId = await GetCurrentUserIdAsync();
 
         var sub = await db.HostSubscriptions.FindAsync(userId, hostId);
         if (sub is null) return NotFound();
@@ -70,7 +71,7 @@ public class SubscriptionsController(AppDbContext db) : ControllerBase
     [HttpGet("subscribers")]
     public async Task<IActionResult> GetMySubscribers()
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var userId = await GetCurrentUserIdAsync();
 
         var subscribers = await db.HostSubscriptions
             .Include(hs => hs.Subscriber)

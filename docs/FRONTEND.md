@@ -46,7 +46,7 @@ A single-page application built with **Vite + React 18 + TypeScript** that consu
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 20+ (LTS recommended)
 - The .NET backend running on `http://localhost:5266` (see main [README](../README.md))
 
 ### Install and run

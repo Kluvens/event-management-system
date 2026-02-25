@@ -1,45 +1,33 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-import type { UserRole, AuthResponse } from '@/types'
+import type { UserRole } from '@/types'
 
-interface AuthUser {
-  userId: number
-  name: string
-  email: string
-  role: UserRole
+export interface AppUser {
+  userId:        number
+  name:          string
+  email:         string
+  role:          UserRole
+  loyaltyPoints: number
+  loyaltyTier:   string
+  isSuspended:   boolean
 }
 
 interface AuthState {
-  token: string | null
-  user: AuthUser | null
-  login: (data: AuthResponse) => void
-  logout: () => void
-  isAdmin: () => boolean
+  user:         AppUser | null
+  setUser:      (u: AppUser | null) => void
+  logout:       () => void
+  isAdmin:      () => boolean
   isSuperAdmin: () => boolean
 }
 
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set, get) => ({
-      token: null,
-      user: null,
-      login: (data: AuthResponse) =>
-        set({
-          token: data.token,
-          user: {
-            userId: data.userId,
-            name: data.name,
-            email: data.email,
-            role: data.role,
-          },
-        }),
-      logout: () => set({ token: null, user: null }),
-      isAdmin: () => {
-        const role = get().user?.role
-        return role === 'Admin' || role === 'SuperAdmin'
-      },
-      isSuperAdmin: () => get().user?.role === 'SuperAdmin',
-    }),
-    { name: 'auth-storage' }
-  )
-)
+// No persist middleware — Amplify owns token storage in localStorage.
+// The app profile is re-fetched from /api/auth/me on each app load (see App.tsx).
+export const useAuthStore = create<AuthState>()((set, get) => ({
+  user:    null,
+  setUser: (u) => set({ user: u }),
+  logout:  () => set({ user: null }),
+  isAdmin: () => {
+    const role = get().user?.role
+    return role === 'Admin' || role === 'SuperAdmin'
+  },
+  isSuperAdmin: () => get().user?.role === 'SuperAdmin',
+}))

@@ -1,11 +1,8 @@
 namespace EventManagement.DTOs;
 
-public record RegisterRequest(string Name, string Email, string Password);
-
-public record LoginRequest(string Email, string Password);
-
-public record AuthResponse(
-    string Token, int UserId, string Name, string Email, string Role,
-    int LoyaltyPoints, string LoyaltyTier);
-
-public record ChangePasswordRequest(string CurrentPassword, string NewPassword);
+/// <summary>
+/// Returned by GET /api/auth/me — the local app-specific profile for the authenticated Cognito user.
+/// </summary>
+public record UserProfileResponse(
+    int UserId, string Name, string Email, string Role,
+    int LoyaltyPoints, string LoyaltyTier, bool IsSuspended);

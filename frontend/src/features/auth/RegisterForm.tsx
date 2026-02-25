@@ -20,8 +20,8 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>
 
 export function RegisterForm() {
-  const navigate = useNavigate()
-  const register_ = useRegister()
+  const navigate   = useNavigate()
+  const register_  = useRegister()
 
   const {
     register,
@@ -30,8 +30,9 @@ export function RegisterForm() {
   } = useForm<FormData>({ resolver: zodResolver(schema) })
 
   async function onSubmit(data: FormData) {
-    await register_.mutateAsync(data)
-    navigate('/')
+    const email = await register_.mutateAsync(data)
+    // Navigate to confirm-email page with the email pre-filled
+    navigate('/confirm-email', { state: { email } })
   }
 
   const inputClass =
@@ -42,24 +43,15 @@ export function RegisterForm() {
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white">Create an account</h1>
-        <p className="mt-1 text-sm text-slate-400">
-          Start booking and hosting events
-        </p>
+        <p className="mt-1 text-sm text-slate-400">Start booking and hosting events</p>
       </div>
 
       <div className="space-y-1.5">
         <Label htmlFor="name" className={labelClass}>
           Full Name
         </Label>
-        <Input
-          id="name"
-          placeholder="Alice Smith"
-          className={inputClass}
-          {...register('name')}
-        />
-        {errors.name && (
-          <p className="text-xs text-red-400">{errors.name.message}</p>
-        )}
+        <Input id="name" placeholder="Alice Smith" className={inputClass} {...register('name')} />
+        {errors.name && <p className="text-xs text-red-400">{errors.name.message}</p>}
       </div>
 
       <div className="space-y-1.5">
@@ -74,9 +66,7 @@ export function RegisterForm() {
           className={inputClass}
           {...register('email')}
         />
-        {errors.email && (
-          <p className="text-xs text-red-400">{errors.email.message}</p>
-        )}
+        {errors.email && <p className="text-xs text-red-400">{errors.email.message}</p>}
       </div>
 
       <div className="space-y-1.5">
@@ -91,9 +81,7 @@ export function RegisterForm() {
           className={inputClass}
           {...register('password')}
         />
-        {errors.password && (
-          <p className="text-xs text-red-400">{errors.password.message}</p>
-        )}
+        {errors.password && <p className="text-xs text-red-400">{errors.password.message}</p>}
       </div>
 
       <Button
@@ -106,10 +94,7 @@ export function RegisterForm() {
 
       <p className="text-center text-sm text-slate-400">
         Already have an account?{' '}
-        <Link
-          to="/login"
-          className="font-medium text-indigo-400 hover:text-indigo-300"
-        >
+        <Link to="/login" className="font-medium text-indigo-400 hover:text-indigo-300">
           Sign in
         </Link>
       </p>

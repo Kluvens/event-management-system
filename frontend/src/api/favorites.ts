@@ -13,20 +13,20 @@ export const favoritesApi = {
 }
 
 export function useMyFavorites() {
-  const { token } = useAuthStore()
+  const { user } = useAuthStore()
   return useQuery({
     queryKey: ['favorites'],
     queryFn: favoritesApi.list,
-    enabled: !!token,
+    enabled: !!user,
   })
 }
 
 export function useMyFavoriteIds() {
-  const { token } = useAuthStore()
+  const { user } = useAuthStore()
   return useQuery({
     queryKey: ['favorites', 'ids'],
     queryFn: favoritesApi.ids,
-    enabled: !!token,
+    enabled: !!user,
     staleTime: 30_000,
   })
 }

@@ -12,9 +12,8 @@ namespace EventManagement.Services;
 ///   2. ~/.aws/credentials file (local dev)
 ///   3. IAM role attached to EC2/ECS (production)
 ///
-/// The S3 bucket must allow public reads, either via:
-///   - A bucket policy granting s3:GetObject to *  (recommended)
-///   - Or ACLs enabled + PublicRead on each object
+/// The S3 bucket grants public reads via a bucket policy (s3:GetObject → *).
+/// ACLs are disabled on the bucket (BucketOwnerEnforced), so no CannedACL is set.
 /// </summary>
 public class S3StorageService : IStorageService
 {
@@ -44,10 +43,6 @@ public class S3StorageService : IStorageService
             Key         = key,
             InputStream = stream,
             ContentType = file.ContentType,
-            // Makes the object publicly readable.
-            // Requires "ACLs enabled" on the bucket, OR remove this line
-            // and use a public bucket policy instead.
-            CannedACL   = S3CannedACL.PublicRead,
         };
 
         var transferUtility = new TransferUtility(_s3Client);

@@ -1,16 +1,17 @@
-using System.Security.Claims;
 using EventManagement.Data;
 using EventManagement.DTOs;
 using EventManagement.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using EventManagement.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace EventManagement.Controllers;
 
 [ApiController]
 [Route("api/events")]
-public class EventsController(AppDbContext db) : ControllerBase
+public class EventsController(AppDbContext db, ICognitoUserResolver resolver)
+    : AppControllerBase(resolver)
 {
     private const string RoleAdmin       = "Admin";
     private const string RoleSuperAdmin  = "SuperAdmin";
@@ -36,9 +37,8 @@ public class EventsController(AppDbContext db) : ControllerBase
         [FromQuery] DateTime? to,
         [FromQuery] string? sortBy)
     {
-        var userIdStr    = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var userId       = userIdStr is not null ? int.Parse(userIdStr) : (int?)null;
-        var role         = User.FindFirstValue(ClaimTypes.Role);
+        int? userId = GetCurrentSub() is not null ? await GetCurrentUserIdAsync() : null;
+        var role         = GetCurrentRole();
         var isSuperAdmin = role == RoleSuperAdmin;
 
         var isAdmin = role is RoleAdmin or RoleSuperAdmin;
@@ -92,9 +92,8 @@ public class EventsController(AppDbContext db) : ControllerBase
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(int id)
     {
-        var userIdStr    = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var userId       = userIdStr is not null ? int.Parse(userIdStr) : (int?)null;
-        var role         = User.FindFirstValue(ClaimTypes.Role);
+        int? userId = GetCurrentSub() is not null ? await GetCurrentUserIdAsync() : null;
+        var role         = GetCurrentRole();
         var isSuperAdmin = role == RoleSuperAdmin;
         var isAdmin      = role == RoleAdmin;
 
@@ -120,8 +119,8 @@ public class EventsController(AppDbContext db) : ControllerBase
     [HttpGet("{id}/stats")]
     public async Task<IActionResult> GetStats(int id)
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var role   = User.FindFirstValue(ClaimTypes.Role);
+        var userId = await GetCurrentUserIdAsync();
+        var role   = GetCurrentRole();
 
         var ev = await db.Events
             .Include(e => e.Bookings)
@@ -149,7 +148,7 @@ public class EventsController(AppDbContext db) : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create(CreateEventRequest req)
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var userId = await GetCurrentUserIdAsync();
 
         var ev = new Event
         {
@@ -185,8 +184,8 @@ public class EventsController(AppDbContext db) : ControllerBase
     [HttpPost("{id}/publish")]
     public async Task<IActionResult> Publish(int id)
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var role   = User.FindFirstValue(ClaimTypes.Role);
+        var userId = await GetCurrentUserIdAsync();
+        var role   = GetCurrentRole();
 
         var ev = await db.Events.FindAsync(id);
         if (ev is null) return NotFound();
@@ -205,8 +204,8 @@ public class EventsController(AppDbContext db) : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(int id, UpdateEventRequest req)
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var role   = User.FindFirstValue(ClaimTypes.Role);
+        var userId = await GetCurrentUserIdAsync();
+        var role   = GetCurrentRole();
 
         var ev = await db.Events.Include(e => e.EventTags).FirstOrDefaultAsync(e => e.Id == id);
         if (ev is null) return NotFound();
@@ -236,8 +235,8 @@ public class EventsController(AppDbContext db) : ControllerBase
     [HttpPost("{id}/cancel")]
     public async Task<IActionResult> Cancel(int id)
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var role   = User.FindFirstValue(ClaimTypes.Role);
+        var userId = await GetCurrentUserIdAsync();
+        var role   = GetCurrentRole();
 
         var ev = await db.Events.FindAsync(id);
         if (ev is null) return NotFound();
@@ -265,8 +264,8 @@ public class EventsController(AppDbContext db) : ControllerBase
     [HttpPost("{id}/postpone")]
     public async Task<IActionResult> Postpone(int id, PostponeEventRequest req)
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var role   = User.FindFirstValue(ClaimTypes.Role);
+        var userId = await GetCurrentUserIdAsync();
+        var role   = GetCurrentRole();
 
         var ev = await db.Events.FindAsync(id);
         if (ev is null) return NotFound();
@@ -297,8 +296,8 @@ public class EventsController(AppDbContext db) : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var role   = User.FindFirstValue(ClaimTypes.Role);
+        var userId = await GetCurrentUserIdAsync();
+        var role   = GetCurrentRole();
 
         var ev = await db.Events.FindAsync(id);
         if (ev is null) return NotFound();
@@ -331,8 +330,8 @@ public class EventsController(AppDbContext db) : ControllerBase
     [HttpPost("{id}/announcements")]
     public async Task<IActionResult> CreateAnnouncement(int id, CreateAnnouncementRequest req)
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var role   = User.FindFirstValue(ClaimTypes.Role);
+        var userId = await GetCurrentUserIdAsync();
+        var role   = GetCurrentRole();
 
         var ev = await db.Events.FindAsync(id);
         if (ev is null) return NotFound();

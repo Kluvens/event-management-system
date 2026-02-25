@@ -1,16 +1,17 @@
-using System.Security.Claims;
 using System.Text;
 using EventManagement.Data;
 using EventManagement.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using EventManagement.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace EventManagement.Controllers;
 
 [ApiController]
 [Route("api/organizers")]
-public class OrganizersController(AppDbContext db) : ControllerBase
+public class OrganizersController(AppDbContext db, ICognitoUserResolver resolver)
+    : AppControllerBase(resolver)
 {
     private const string StatusConfirmed = "Confirmed";
     private const string StatusCancelled = "Cancelled";
@@ -56,7 +57,7 @@ public class OrganizersController(AppDbContext db) : ControllerBase
     [HttpGet("me/dashboard")]
     public async Task<IActionResult> GetDashboard()
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var userId = await GetCurrentUserIdAsync();
 
         var events = await db.Events
             .Include(e => e.Bookings)
@@ -91,7 +92,7 @@ public class OrganizersController(AppDbContext db) : ControllerBase
     [HttpPut("me/profile")]
     public async Task<IActionResult> UpdateProfile(UpdateOrganizerProfileRequest req)
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var userId = await GetCurrentUserIdAsync();
         var user = await db.Users.FindAsync(userId);
         if (user is null) return NotFound();
 
@@ -110,8 +111,8 @@ public class OrganizersController(AppDbContext db) : ControllerBase
     [HttpGet("me/events/{eventId}/attendees")]
     public async Task<IActionResult> GetAttendees(int eventId)
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var role   = User.FindFirstValue(ClaimTypes.Role);
+        var userId = await GetCurrentUserIdAsync();
+        var role   = GetCurrentRole();
 
         var ev = await db.Events.FindAsync(eventId);
         if (ev is null) return NotFound();
@@ -142,8 +143,8 @@ public class OrganizersController(AppDbContext db) : ControllerBase
     [HttpGet("me/events/{eventId}/attendees/export")]
     public async Task<IActionResult> ExportAttendees(int eventId)
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var role   = User.FindFirstValue(ClaimTypes.Role);
+        var userId = await GetCurrentUserIdAsync();
+        var role   = GetCurrentRole();
 
         var ev = await db.Events.FindAsync(eventId);
         if (ev is null) return NotFound();
@@ -179,8 +180,8 @@ public class OrganizersController(AppDbContext db) : ControllerBase
     [HttpDelete("me/events/{eventId}/bookings/{bookingId}")]
     public async Task<IActionResult> OrganizerRefund(int eventId, int bookingId)
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var role   = User.FindFirstValue(ClaimTypes.Role);
+        var userId = await GetCurrentUserIdAsync();
+        var role   = GetCurrentRole();
 
         var ev = await db.Events.FindAsync(eventId);
         if (ev is null) return NotFound();

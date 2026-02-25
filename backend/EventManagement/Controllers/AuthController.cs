@@ -1,41 +1,35 @@
-using System.Security.Claims;
+using EventManagement.Data;
 using EventManagement.DTOs;
 using EventManagement.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace EventManagement.Controllers;
 
 [ApiController]
 [Route("api/auth")]
-public class AuthController(AuthService auth) : ControllerBase
+public class AuthController(AppDbContext db, ICognitoUserResolver resolver) : AppControllerBase(resolver)
 {
-    [HttpPost("register")]
-    public async Task<IActionResult> Register(RegisterRequest req)
-    {
-        var result = await auth.RegisterAsync(req);
-        if (result is null)
-            return Conflict(new { message = "Email already in use." });
-        return Ok(result);
-    }
-
-    [HttpPost("login")]
-    public async Task<IActionResult> Login(LoginRequest req)
-    {
-        var (result, error) = await auth.LoginAsync(req);
-        if (result is null)
-            return Unauthorized(new { message = error });
-        return Ok(result);
-    }
-
+    /// <summary>
+    /// Returns the app-specific profile for the currently authenticated user.
+    /// Called by the frontend immediately after Cognito sign-in to get userId, role, and loyalty data.
+    /// On first login, a local User row is auto-provisioned by CognitoUserResolver.
+    /// </summary>
     [Authorize]
-    [HttpPut("change-password")]
-    public async Task<IActionResult> ChangePassword(ChangePasswordRequest req)
+    [HttpGet("me")]
+    public async Task<IActionResult> GetMe()
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var ok = await auth.ChangePasswordAsync(userId, req);
-        if (!ok)
-            return BadRequest(new { message = "Current password is incorrect." });
-        return NoContent();
+        var userId = await GetCurrentUserIdAsync();
+        var user   = await db.Users.FindAsync(userId);
+
+        if (user is null) return NotFound();
+
+        if (user.IsSuspended)
+            return StatusCode(403, new { message = "Your account has been suspended. Please contact support." });
+
+        return Ok(new UserProfileResponse(
+            user.Id, user.Name, user.Email, user.Role,
+            user.LoyaltyPoints, user.LoyaltyTier, user.IsSuspended));
     }
 }

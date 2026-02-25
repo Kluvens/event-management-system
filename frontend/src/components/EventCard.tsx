@@ -22,7 +22,7 @@ interface Props {
 
 function HeartButton({ event }: { event: Event }) {
   const navigate = useNavigate()
-  const { token } = useAuthStore()
+  const { user } = useAuthStore()
   const { data: ids = [] } = useMyFavoriteIds()
   const isFaved = ids.includes(event.id)
   const { addMutation, removeMutation } = useToggleFavorite(event.id)
@@ -31,7 +31,7 @@ function HeartButton({ event }: { event: Event }) {
   function handleClick(e: React.MouseEvent) {
     e.preventDefault()
     e.stopPropagation()
-    if (!token) { navigate('/login'); return }
+    if (!user) { navigate('/login'); return }
     if (isFaved) removeMutation.mutate()
     else addMutation.mutate()
   }

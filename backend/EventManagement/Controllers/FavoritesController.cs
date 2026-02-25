@@ -1,8 +1,8 @@
-using System.Security.Claims;
 using EventManagement.Data;
 using EventManagement.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using EventManagement.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace EventManagement.Controllers;
@@ -10,24 +10,24 @@ namespace EventManagement.Controllers;
 [ApiController]
 [Route("api/favorites")]
 [Authorize]
-public class FavoritesController(AppDbContext db) : ControllerBase
+public class FavoritesController(AppDbContext db, ICognitoUserResolver resolver)
+    : AppControllerBase(resolver)
 {
     // ── List my saved events ───────────────────────────────────────
 
     [HttpGet]
     public async Task<IActionResult> GetMyFavorites()
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var userId = await GetCurrentUserIdAsync();
 
         var events = await db.UserFavorites
-            .Where(uf => uf.UserId == userId)
+            .Where(uf => uf.UserId == userId && !uf.Event.IsSuspended)
             .OrderByDescending(uf => uf.SavedAt)
+            .Include(uf => uf.Event).ThenInclude(e => e.CreatedBy)
+            .Include(uf => uf.Event).ThenInclude(e => e.Category)
+            .Include(uf => uf.Event).ThenInclude(e => e.Bookings)
+            .Include(uf => uf.Event).ThenInclude(e => e.EventTags).ThenInclude(et => et.Tag)
             .Select(uf => uf.Event)
-            .Include(e => e.CreatedBy)
-            .Include(e => e.Category)
-            .Include(e => e.Bookings)
-            .Include(e => e.EventTags).ThenInclude(et => et.Tag)
-            .Where(e => !e.IsSuspended)
             .ToListAsync();
 
         return Ok(events.Select(EventsController.ToResponse));
@@ -38,7 +38,7 @@ public class FavoritesController(AppDbContext db) : ControllerBase
     [HttpGet("ids")]
     public async Task<IActionResult> GetMyFavoriteIds()
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var userId = await GetCurrentUserIdAsync();
         var ids = await db.UserFavorites
             .Where(uf => uf.UserId == userId)
             .Select(uf => uf.EventId)
@@ -51,7 +51,7 @@ public class FavoritesController(AppDbContext db) : ControllerBase
     [HttpPost("{eventId:int}")]
     public async Task<IActionResult> Add(int eventId)
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var userId = await GetCurrentUserIdAsync();
 
         if (!await db.Events.AnyAsync(e => e.Id == eventId && !e.IsSuspended))
             return NotFound();
@@ -69,7 +69,7 @@ public class FavoritesController(AppDbContext db) : ControllerBase
     [HttpDelete("{eventId:int}")]
     public async Task<IActionResult> Remove(int eventId)
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var userId = await GetCurrentUserIdAsync();
 
         var fav = await db.UserFavorites.FindAsync(userId, eventId);
         if (fav is null) return NotFound();

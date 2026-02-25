@@ -1,16 +1,17 @@
-using System.Security.Claims;
 using EventManagement.Data;
 using EventManagement.DTOs;
 using EventManagement.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using EventManagement.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace EventManagement.Controllers;
 
 [ApiController]
 [Route("api/events/{eventId}/reviews")]
-public class ReviewsController(AppDbContext db) : ControllerBase
+public class ReviewsController(AppDbContext db, ICognitoUserResolver resolver)
+    : AppControllerBase(resolver)
 {
     private const string StatusConfirmed = "Confirmed";
 
@@ -48,7 +49,7 @@ public class ReviewsController(AppDbContext db) : ControllerBase
         if (req.Rating is < 1 or > 5)
             return BadRequest(new { message = "Rating must be between 1 and 5." });
 
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var userId = await GetCurrentUserIdAsync();
         var ev = await db.Events.FindAsync(eventId);
         if (ev is null) return NotFound();
 
@@ -85,7 +86,7 @@ public class ReviewsController(AppDbContext db) : ControllerBase
     [HttpDelete("{reviewId}")]
     public async Task<IActionResult> Delete(int eventId, int reviewId)
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var userId = await GetCurrentUserIdAsync();
         var review = await db.Reviews.FindAsync(reviewId);
         if (review is null || review.EventId != eventId) return NotFound();
         if (review.UserId != userId) return Forbid();
@@ -101,8 +102,8 @@ public class ReviewsController(AppDbContext db) : ControllerBase
     [HttpPost("{reviewId}/pin")]
     public async Task<IActionResult> Pin(int eventId, int reviewId)
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var role   = User.FindFirstValue(ClaimTypes.Role);
+        var userId = await GetCurrentUserIdAsync();
+        var role   = GetCurrentRole();
 
         var ev = await db.Events.FindAsync(eventId);
         if (ev is null) return NotFound();
@@ -128,8 +129,8 @@ public class ReviewsController(AppDbContext db) : ControllerBase
     [HttpPost("{reviewId}/replies")]
     public async Task<IActionResult> Reply(int eventId, int reviewId, ReviewReplyRequest req)
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var role   = User.FindFirstValue(ClaimTypes.Role);
+        var userId = await GetCurrentUserIdAsync();
+        var role   = GetCurrentRole();
 
         // Only the event organizer (or admin) can reply to reviews
         var ev = await db.Events.FindAsync(eventId);
@@ -163,7 +164,7 @@ public class ReviewsController(AppDbContext db) : ControllerBase
     [HttpPost("{reviewId}/vote")]
     public async Task<IActionResult> Vote(int eventId, int reviewId, VoteRequest req)
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var userId = await GetCurrentUserIdAsync();
 
         if (!await db.Reviews.AnyAsync(r => r.Id == reviewId && r.EventId == eventId))
             return NotFound();

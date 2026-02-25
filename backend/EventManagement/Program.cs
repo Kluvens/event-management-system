@@ -1,4 +1,4 @@
-using System.Text;
+using System.Security.Claims;
 using EventManagement.Data;
 using EventManagement.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -12,9 +12,14 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+// Cognito config
+var cognitoRegion   = builder.Configuration["Cognito:Region"]!;
+var cognitoPoolId   = builder.Configuration["Cognito:UserPoolId"]!;
+var cognitoClientId = builder.Configuration["Cognito:ClientId"]!;
+var cognitoIssuer   = $"https://cognito-idp.{cognitoRegion}.amazonaws.com/{cognitoPoolId}";
+
 // Auth services
-builder.Services.AddScoped<JwtService>();
-builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<ICognitoUserResolver, CognitoUserResolver>();
 
 // Storage: "Local" (default for dev) or "S3" (production)
 var storageProvider = builder.Configuration["Storage:Provider"] ?? "Local";
@@ -23,20 +28,42 @@ if (storageProvider.Equals("S3", StringComparison.OrdinalIgnoreCase))
 else
     builder.Services.AddSingleton<IStorageService, LocalStorageService>();
 
-// JWT authentication
-var jwtKey = builder.Configuration["Jwt:Key"]!;
+// JWT authentication — Cognito RS256, keys fetched automatically via OIDC discovery
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        options.Authority       = cognitoIssuer;
+        options.MetadataAddress = $"{cognitoIssuer}/.well-known/openid-configuration";
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
+            ValidateIssuer           = true,
+            ValidIssuer              = cognitoIssuer,
+            ValidateAudience         = true,
+            ValidAudience            = cognitoClientId,
+            ValidateLifetime         = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidAudience = builder.Configuration["Jwt:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+        };
+
+        // Map Cognito groups to ASP.NET ClaimTypes.Role so [Authorize(Roles = "Admin")] works
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = ctx =>
+            {
+                var groups = ctx.Principal!
+                    .FindAll("cognito:groups")
+                    .Select(c => c.Value)
+                    .ToList();
+
+                var identity = (ClaimsIdentity)ctx.Principal.Identity!;
+
+                if (groups.Count == 0)
+                    identity.AddClaim(new Claim(ClaimTypes.Role, "Attendee"));
+                else
+                    foreach (var group in groups)
+                        identity.AddClaim(new Claim(ClaimTypes.Role, group));
+
+                return Task.CompletedTask;
+            }
         };
     });
 
@@ -73,7 +100,7 @@ builder.Services.AddSwaggerGen(c =>
         In = ParameterLocation.Header,
         Type = SecuritySchemeType.Http,
         Scheme = JwtBearerDefaults.AuthenticationScheme,
-        Description = "Paste your JWT token here (without 'Bearer ' prefix)."
+        Description = "Paste your Cognito ID token here (without 'Bearer ' prefix)."
     };
 
     c.AddSecurityDefinition("Bearer", jwtScheme);

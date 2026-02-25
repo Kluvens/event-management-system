@@ -26,16 +26,18 @@ import {
   SheetContent,
   SheetTrigger,
 } from '@/components/ui/sheet'
+import { signOut } from 'aws-amplify/auth'
 import { useAuthStore } from '@/stores/authStore'
 import { getInitials } from '@/lib/utils'
 
 export function Navbar() {
   const navigate = useNavigate()
-  const { user, token, logout, isAdmin } = useAuthStore()
+  const { user, logout, isAdmin } = useAuthStore()
   const [mobileOpen, setMobileOpen] = useState(false)
 
-  function handleLogout() {
+  async function handleLogout() {
     logout()
+    await signOut()
     navigate('/')
   }
 
@@ -48,7 +50,7 @@ export function Navbar() {
       >
         Browse Events
       </Link>
-      {token && (
+      {user && (
         <Link
           to="/my-bookings"
           className="text-sm font-medium text-slate-600 transition-colors hover:text-slate-900"
@@ -57,7 +59,7 @@ export function Navbar() {
           My Bookings
         </Link>
       )}
-      {token && (
+      {user && (
         <Link
           to="/favorites"
           className="flex items-center gap-1.5 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900"
@@ -67,7 +69,7 @@ export function Navbar() {
           Favourites
         </Link>
       )}
-      {token && (
+      {user && (
         <Link
           to="/dashboard"
           className="text-sm font-medium text-slate-600 transition-colors hover:text-slate-900"
@@ -105,7 +107,7 @@ export function Navbar() {
 
         {/* Right side */}
         <div className="flex items-center gap-2">
-          {token ? (
+          {user ? (
             <>
               <Button
                 variant="outline"
@@ -195,7 +197,7 @@ export function Navbar() {
               <div className="mt-6 flex flex-col gap-4">
                 {navLinks}
                 <Separator />
-                {token ? (
+                {user ? (
                   <>
                     <button
                       onClick={() => {

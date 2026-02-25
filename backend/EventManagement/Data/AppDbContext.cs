@@ -25,6 +25,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .HasIndex(u => u.Email)
             .IsUnique();
 
+        modelBuilder.Entity<User>()
+            .HasIndex(u => u.CognitoSub)
+            .IsUnique()
+            .HasFilter("\"CognitoSub\" IS NOT NULL");
+
         // Ignore computed properties so EF doesn't try to map them
         modelBuilder.Entity<User>()
             .Ignore(u => u.LoyaltyTier)
