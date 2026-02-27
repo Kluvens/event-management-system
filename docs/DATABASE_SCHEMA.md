@@ -135,6 +135,25 @@ erDiagram
         int eventId "nullable FK"
     }
 
+    STORE_PRODUCTS {
+        int id PK
+        string name
+        string description
+        int pointCost
+        string category
+        string imageUrl "nullable"
+        boolean isActive
+        datetime createdAt
+    }
+
+    USER_PURCHASES {
+        int id PK
+        int userId FK
+        int productId FK
+        datetime purchasedAt
+        int pointsSpent
+    }
+
     USERS ||--o{ EVENTS : "creates"
     USERS ||--o{ BOOKINGS : "makes"
     USERS ||--o{ REVIEWS : "writes"
@@ -154,6 +173,8 @@ erDiagram
     EVENTS ||--o{ NOTIFICATIONS : "triggers"
     REVIEWS ||--o{ REVIEW_REPLIES : "has"
     REVIEWS ||--o{ REVIEW_VOTES : "receives"
+    STORE_PRODUCTS ||--o{ USER_PURCHASES : "purchased via"
+    USERS ||--o{ USER_PURCHASES : "makes"
 ```
 
 ---
@@ -334,6 +355,39 @@ Broadcast messages attached to an event. Created manually by the host or automat
 
 ---
 
+### `StoreProducts`
+
+Catalog of items purchasable with loyalty points. Managed by admins. Deactivation is soft (IsActive = false); existing purchases are preserved.
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| `id` | INTEGER | PK, auto-increment | |
+| `name` | TEXT | NOT NULL | Display name |
+| `description` | TEXT | NOT NULL | Short description shown on product card |
+| `pointCost` | INTEGER | NOT NULL | Points required to purchase |
+| `category` | TEXT | NOT NULL | One of: `Badge`, `Cosmetic`, `Feature`, `Perk`, `Collectible` |
+| `imageUrl` | TEXT | nullable | Optional product image URL |
+| `isActive` | BOOLEAN | NOT NULL, default `true` | False = hidden from store; soft delete |
+| `createdAt` | DATETIME | NOT NULL | UTC |
+
+---
+
+### `UserPurchases`
+
+Records each loyalty-points purchase. Unique per (user, product) — a user can own each item only once.
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| `id` | INTEGER | PK, auto-increment | |
+| `userId` | INTEGER | FK → `Users.id` CASCADE | Buyer |
+| `productId` | INTEGER | FK → `StoreProducts.id` CASCADE | Item purchased |
+| `purchasedAt` | DATETIME | NOT NULL | UTC |
+| `pointsSpent` | INTEGER | NOT NULL | Snapshot of `pointCost` at time of purchase |
+
+**Composite unique constraint:** `(UserId, ProductId)` — one ownership record per user per product.
+
+---
+
 ### `WaitlistEntries`
 
 Position-ordered queue of users waiting for a spot at a sold-out event. When a booking is cancelled, `WaitlistService.PromoteNextAsync` converts the entry at position 1 into a confirmed booking and re-numbers remaining entries.
@@ -381,6 +435,7 @@ Per-user in-app notification. Generated in bulk (fan-out) when a host posts an a
 | `ReviewVotes` | `(reviewId, userId)` | PK (composite) | One vote per user per review |
 | `HostSubscriptions` | `(subscriberId, hostId)` | PK (composite) | One follow per (follower, host) pair |
 | `WaitlistEntries` | `(EventId, UserId)` | UNIQUE composite | One waitlist slot per user per event |
+| `UserPurchases` | `(UserId, ProductId)` | UNIQUE composite | One ownership record per user per product |
 
 ---
 
@@ -405,6 +460,10 @@ Per-user in-app notification. Generated in bulk (fan-out) when a host posts an a
 | `HostSubscription.subscriberId/hostId` → `RESTRICT` | Prevents orphaned subscription rows; users must be explicitly deleted separately |
 | Categories and tags seeded via EF `HasData` | Consistent reference data across all environments; avoids migration drift |
 | Organiser profile fields on `User` model | Avoids a separate `OrganizerProfile` table for a 1:1 relationship; simplifies queries |
+| `UserPurchase(UserId, ProductId)` unique composite | Enforces one ownership record per user per product at the DB level |
+| `StoreProduct.isActive` soft-delete | Deactivating a product preserves existing purchase records and order history |
+| `UserPurchase.pointsSpent` snapshot | Records the cost at purchase time; immune to later price changes on the product |
+| Store product categories as plain string | `Badge`, `Cosmetic`, `Feature`, `Perk`, `Collectible` — flexible enough for future additions without a migration |
 
 ---
 

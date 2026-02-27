@@ -12,6 +12,7 @@ import {
   Heart,
   Sun,
   Moon,
+  ShoppingBag,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -72,6 +73,16 @@ export function Navbar() {
         >
           <Heart className="h-3.5 w-3.5" />
           Favourites
+        </Link>
+      )}
+      {user && (
+        <Link
+          to="/store"
+          className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+          onClick={() => setMobileOpen(false)}
+        >
+          <ShoppingBag className="h-3.5 w-3.5" />
+          Store
         </Link>
       )}
       {user && (
@@ -165,6 +176,10 @@ export function Navbar() {
                   <DropdownMenuItem onClick={() => navigate('/favorites')}>
                     <Heart className="mr-2 h-4 w-4" />
                     Favourites
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/store')}>
+                    <ShoppingBag className="mr-2 h-4 w-4" />
+                    Loyalty Store
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate('/dashboard')}>
                     <LayoutDashboard className="mr-2 h-4 w-4" />

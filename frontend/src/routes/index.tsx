@@ -17,6 +17,7 @@ import { OrganizerDashboardPage } from '@/pages/OrganizerDashboardPage'
 import { OrganizerProfilePage } from '@/pages/OrganizerProfilePage'
 import { AdminPage } from '@/pages/AdminPage'
 import { CheckInScannerPage } from '@/pages/CheckInScannerPage'
+import { StorePage } from '@/pages/StorePage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 
 export const router = createBrowserRouter([
@@ -34,6 +35,7 @@ export const router = createBrowserRouter([
         children: [
           { path: 'my-bookings', element: <MyBookingsPage /> },
           { path: 'favorites', element: <FavoritesPage /> },
+          { path: 'store', element: <StorePage /> },
           { path: 'events/create', element: <CreateEventPage /> },
           { path: 'events/:id/edit', element: <EditEventPage /> },
           { path: 'dashboard', element: <OrganizerDashboardPage /> },

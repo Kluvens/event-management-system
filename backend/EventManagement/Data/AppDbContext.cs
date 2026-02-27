@@ -19,6 +19,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<UserFavorite> UserFavorites => Set<UserFavorite>();
     public DbSet<WaitlistEntry> WaitlistEntries => Set<WaitlistEntry>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<StoreProduct> StoreProducts => Set<StoreProduct>();
+    public DbSet<UserPurchase> UserPurchases => Set<UserPurchase>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -152,6 +154,23 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .WithMany(e => e.Notifications)
             .HasForeignKey(n => n.EventId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        // ── UserPurchases ──────────────────────────────────────────
+        modelBuilder.Entity<UserPurchase>()
+            .HasIndex(up => new { up.UserId, up.ProductId })
+            .IsUnique();
+
+        modelBuilder.Entity<UserPurchase>()
+            .HasOne(up => up.User)
+            .WithMany()
+            .HasForeignKey(up => up.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<UserPurchase>()
+            .HasOne(up => up.Product)
+            .WithMany(p => p.Purchases)
+            .HasForeignKey(up => up.ProductId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         // ── Seed data ──────────────────────────────────────────────
         modelBuilder.Entity<Category>().HasData(

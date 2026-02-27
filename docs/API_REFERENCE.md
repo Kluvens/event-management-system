@@ -19,6 +19,7 @@ All request/response bodies are JSON. Endpoints marked with `[Auth]` require a `
 - [Tags](#tag-endpoints)
 - [Categories](#category-endpoints)
 - [Administration](#administration-endpoints)
+- [Loyalty Store](#loyalty-store-endpoints)
 - [Dev Utilities](#dev-utility-endpoints)
 
 ---
@@ -1021,6 +1022,121 @@ System-wide statistics dashboard.
   "totalRevenue": 394500.00
 }
 ```
+
+---
+
+## Loyalty Store Endpoints
+
+### `GET /api/store/products`
+
+List all active store products. Publicly accessible; if authenticated, each product includes an `alreadyOwned` flag.
+
+**Query parameters**
+
+| Parameter | Type | Description |
+|---|---|---|
+| `category` | string | Filter by category: `Badge`, `Cosmetic`, `Feature`, `Perk`, or `Collectible` |
+
+**Response `200 OK`**
+```json
+[
+  {
+    "id": 1,
+    "name": "Event Pioneer",
+    "description": "Awarded to early adopters...",
+    "pointCost": 500,
+    "category": "Badge",
+    "imageUrl": null,
+    "isActive": true,
+    "alreadyOwned": false
+  }
+]
+```
+
+---
+
+### `POST /api/store/purchase` `[Auth]`
+
+Purchase a store product using loyalty points.
+
+**Request body**
+```json
+{ "productId": 1 }
+```
+
+**Response `200 OK`**
+```json
+{
+  "purchaseId": 42,
+  "productName": "Event Pioneer",
+  "pointsSpent": 500,
+  "remainingPoints": 9500
+}
+```
+
+**Response `400 Bad Request`** — not enough loyalty points.
+**Response `404 Not Found`** — product not found or inactive.
+**Response `409 Conflict`** — item already owned.
+
+---
+
+### `GET /api/store/my-purchases` `[Auth]`
+
+List the authenticated user's purchase history, most recent first.
+
+**Response `200 OK`**
+```json
+[
+  {
+    "id": 42,
+    "product": { "id": 1, "name": "Event Pioneer", ... },
+    "purchasedAt": "2026-02-27T10:00:00Z",
+    "pointsSpent": 500
+  }
+]
+```
+
+---
+
+### `POST /api/store/products` `[Admin]`
+
+Create a new store product.
+
+**Request body**
+```json
+{
+  "name": "Gold Frame",
+  "description": "Gold profile frame.",
+  "pointCost": 2000,
+  "category": "Cosmetic",
+  "imageUrl": "https://cdn.example.com/frame.png"
+}
+```
+
+**Response `201 Created`** — full `StoreProductResponse`.
+**Response `403 Forbidden`** — not Admin or SuperAdmin.
+
+---
+
+### `PUT /api/store/products/{id}` `[Admin]`
+
+Update a store product. All fields are optional (partial update).
+
+**Request body** — any subset of: `name`, `description`, `pointCost`, `category`, `imageUrl`, `isActive`.
+
+**Response `200 OK`** — updated `StoreProductResponse`.
+**Response `403 Forbidden`** — not Admin or SuperAdmin.
+**Response `404 Not Found`** — product not found.
+
+---
+
+### `DELETE /api/store/products/{id}` `[Admin]`
+
+Soft-deactivate a product (sets `isActive = false`). The product disappears from the public listing; existing purchases are unaffected.
+
+**Response `204 No Content`**.
+**Response `403 Forbidden`** — not Admin or SuperAdmin.
+**Response `404 Not Found`** — product not found.
 
 ---
 

@@ -414,5 +414,30 @@ public static class SeedService
         db.Bookings.AddRange(completedBookings);
         attendee.LoyaltyPoints = 2890;
         await db.SaveChangesAsync();
+
+        // ── Store products ────────────────────────────────────────────
+        if (!await db.StoreProducts.AnyAsync())
+        {
+            var storeProducts = new List<StoreProduct>
+            {
+                // Badges
+                new() { Name = "Event Pioneer",       Description = "Awarded to early adopters who booked their first event. Displays proudly on your profile.",         PointCost = 500,  Category = "Badge",       IsActive = true },
+                new() { Name = "Super Fan",            Description = "For the devoted — granted to attendees who have attended 10+ events. Show the world your passion.", PointCost = 1500, Category = "Badge",       IsActive = true },
+                // Cosmetics
+                new() { Name = "Gold Profile Frame",   Description = "A shimmering gold border around your profile picture. Stand out from the crowd.",                  PointCost = 2000, Category = "Cosmetic",    IsActive = true },
+                new() { Name = "Midnight Theme",       Description = "A deep, dark profile theme with midnight-blue accents. Sleek and exclusive.",                      PointCost = 3000, Category = "Cosmetic",    IsActive = true },
+                // Features
+                new() { Name = "Priority Booking Pass", Description = "Get a 24-hour head start on ticket sales before they open to the public. Never miss out again.", PointCost = 2500, Category = "Feature",     IsActive = true },
+                new() { Name = "Extended Review",      Description = "Unlock the ability to write longer reviews (up to 2000 characters) with rich formatting.",         PointCost = 1000, Category = "Feature",     IsActive = true },
+                // Perks
+                new() { Name = "Featured Organizer Boost", Description = "Pin your next event to the featured section on the homepage for 7 days.",                     PointCost = 5000, Category = "Perk",        IsActive = true },
+                new() { Name = "Analytics Pack",       Description = "Unlock advanced analytics for your events — demographic breakdowns, heatmaps, and revenue trends.", PointCost = 3500, Category = "Perk",       IsActive = true },
+                // Collectibles
+                new() { Name = "Event Mascot Figure",  Description = "A virtual limited-edition desk figure of the EventHub mascot. Displayed on your profile forever.", PointCost = 8000, Category = "Collectible", IsActive = true },
+            };
+
+            db.StoreProducts.AddRange(storeProducts);
+            await db.SaveChangesAsync();
+        }
     }
 }

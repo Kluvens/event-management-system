@@ -110,6 +110,22 @@ User stories for the Event Management System, written from the perspective of ea
 
 ---
 
+## Loyalty Store
+
+| ID | User Story | Acceptance Criteria |
+|---|---|---|
+| US-ST01 | As an **attendee**, I want to browse a store of exclusive items so that I can decide how to spend my loyalty points. | `GET /api/store/products` is publicly accessible; products are grouped by category (Badge, Cosmetic, Feature, Perk, Collectible); each product shows name, description, point cost, and category. |
+| US-ST02 | As an **attendee**, I want to filter store items by category so that I can find what I'm looking for quickly. | Passing `?category=Badge` returns only Badge products; no filter returns all active products. |
+| US-ST03 | As an **authenticated attendee**, I want to see which items I already own so that I don't attempt to re-purchase them. | Each product in the listing includes an `alreadyOwned: bool` field; owned items show a checkmark in the UI and their purchase button is disabled. |
+| US-ST04 | As an **attendee**, I want to purchase a store item with loyalty points so that I can unlock exclusive features or cosmetics. | Points ≥ `pointCost` required; points are deducted atomically; a `UserPurchase` record is created; response includes remaining point balance. |
+| US-ST05 | As an **attendee**, I want to be prevented from purchasing an item I already own so that I don't waste points accidentally. | Second purchase of the same product returns `409 Conflict`. |
+| US-ST06 | As an **attendee**, I want to see my purchase history so that I can review what I own. | `GET /api/store/my-purchases` returns owned items in reverse-chronological order, including product details and points spent. |
+| US-ST07 | As an **Admin**, I want to create store products so that I can expand the item catalog. | Requires Admin/SuperAdmin JWT; `POST /api/store/products` with name, description, pointCost, category, optional imageUrl; returns `201` with created product. |
+| US-ST08 | As an **Admin**, I want to update store products so that I can correct details or adjust prices. | `PUT /api/store/products/{id}` accepts a partial payload (any field optional); returns `200` with updated product. |
+| US-ST09 | As an **Admin**, I want to deactivate a store product so that it is hidden from users without destroying purchase history. | `DELETE /api/store/products/{id}` sets `isActive = false` (soft delete); product disappears from public listing; existing purchases are unaffected. |
+
+---
+
 ## Administration (Admin & SuperAdmin)
 
 | ID | User Story | Acceptance Criteria |

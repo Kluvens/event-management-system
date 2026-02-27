@@ -365,3 +365,49 @@ export interface EventAnalytics {
   reviewCount: number
   dailyBookings: DailyBookingCount[]
 }
+
+// ─── Loyalty Store ────────────────────────────────────────────────────────────
+
+export type StoreCategory = 'Badge' | 'Cosmetic' | 'Feature' | 'Perk' | 'Collectible'
+
+export interface StoreProduct {
+  id: number
+  name: string
+  description: string
+  pointCost: number
+  category: StoreCategory
+  imageUrl?: string
+  isActive: boolean
+  alreadyOwned: boolean
+}
+
+export interface UserPurchase {
+  id: number
+  product: StoreProduct
+  purchasedAt: string
+  pointsSpent: number
+}
+
+export interface PurchaseProductResponse {
+  purchaseId: number
+  productName: string
+  pointsSpent: number
+  remainingPoints: number
+}
+
+export interface CreateProductRequest {
+  name: string
+  description: string
+  pointCost: number
+  category: StoreCategory
+  imageUrl?: string
+}
+
+export interface UpdateProductRequest {
+  name?: string
+  description?: string
+  pointCost?: number
+  category?: StoreCategory
+  imageUrl?: string
+  isActive?: boolean
+}

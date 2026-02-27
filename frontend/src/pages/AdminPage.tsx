@@ -69,7 +69,8 @@ import {
 } from '@/api/admin'
 import { useCategories } from '@/api/tagsCategories'
 import { useTags } from '@/api/tagsCategories'
-import type { AdminUserSummary, AdminEvent, Category, Tag } from '@/types'
+import { useStoreProducts, useCreateProduct, useUpdateProduct, useDeactivateProduct } from '@/api/store'
+import type { AdminUserSummary, AdminEvent, Category, Tag, StoreProduct, CreateProductRequest, StoreCategory } from '@/types'
 
 // ─── Inline Confirm wrapper (ConfirmDialog needs open/onOpenChange state) ──────
 
@@ -679,6 +680,176 @@ function TaxonomyTab() {
   )
 }
 
+// ─── Store Tab ─────────────────────────────────────────────────────────────────
+
+const STORE_CATEGORIES: StoreCategory[] = ['Badge', 'Cosmetic', 'Feature', 'Perk', 'Collectible']
+
+const productSchema = z.object({
+  name:        z.string().min(1, 'Name is required'),
+  description: z.string().min(1, 'Description is required'),
+  pointCost:   z.coerce.number().int().min(1, 'Must be at least 1'),
+  category:    z.enum(['Badge', 'Cosmetic', 'Feature', 'Perk', 'Collectible']),
+  imageUrl:    z.string().url('Must be a valid URL').or(z.literal('')).optional(),
+})
+type ProductFormValues = z.infer<typeof productSchema>
+
+function ProductDialog({
+  mode,
+  initial,
+  onSave,
+  isPending,
+  trigger,
+}: Readonly<{
+  mode: 'create' | 'edit'
+  initial?: StoreProduct
+  onSave: (data: CreateProductRequest) => void
+  isPending: boolean
+  trigger: React.ReactNode
+}>) {
+  const [open, setOpen] = useState(false)
+  const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<ProductFormValues>({
+    resolver: zodResolver(productSchema),
+    defaultValues: initial
+      ? { name: initial.name, description: initial.description, pointCost: initial.pointCost, category: initial.category, imageUrl: initial.imageUrl ?? '' }
+      : { name: '', description: '', pointCost: 100, category: 'Badge', imageUrl: '' },
+  })
+
+  function onSubmit(values: ProductFormValues) {
+    onSave({ ...values, imageUrl: values.imageUrl || undefined })
+    setOpen(false)
+    reset()
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>{mode === 'create' ? 'Add Store Product' : 'Edit Product'}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+          <div>
+            <Label>Name</Label>
+            <Input {...register('name')} className="mt-1" />
+            {errors.name && <p className="mt-0.5 text-xs text-red-500">{errors.name.message}</p>}
+          </div>
+          <div>
+            <Label>Description</Label>
+            <Input {...register('description')} className="mt-1" />
+            {errors.description && <p className="mt-0.5 text-xs text-red-500">{errors.description.message}</p>}
+          </div>
+          <div>
+            <Label>Point Cost</Label>
+            <Input type="number" {...register('pointCost')} className="mt-1" />
+            {errors.pointCost && <p className="mt-0.5 text-xs text-red-500">{errors.pointCost.message}</p>}
+          </div>
+          <div>
+            <Label>Category</Label>
+            <Select value={watch('category')} onValueChange={(v) => setValue('category', v as StoreCategory)}>
+              <SelectTrigger className="mt-1">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {STORE_CATEGORIES.map((c) => (
+                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Image URL <span className="text-muted-foreground">(optional)</span></Label>
+            <Input {...register('imageUrl')} placeholder="https://..." className="mt-1" />
+            {errors.imageUrl && <p className="mt-0.5 text-xs text-red-500">{errors.imageUrl.message}</p>}
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button type="submit" disabled={isPending}>{mode === 'create' ? 'Create' : 'Save'}</Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function StoreTab() {
+  const { data: products = [], isPending } = useStoreProducts()
+  const create = useCreateProduct()
+  const update = useUpdateProduct()
+  const deactivate = useDeactivateProduct()
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="font-semibold text-slate-900">Store Products</h3>
+        <ProductDialog
+          mode="create"
+          onSave={(data) => create.mutate(data)}
+          isPending={create.isPending}
+          trigger={
+            <Button size="sm">
+              <Plus className="mr-1 h-3.5 w-3.5" /> Add Product
+            </Button>
+          }
+        />
+      </div>
+
+      {isPending ? (
+        <LoadingSpinner />
+      ) : products.length === 0 ? (
+        <p className="text-sm text-slate-500">No products yet.</p>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Category</TableHead>
+              <TableHead>Points</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {products.map((p: StoreProduct) => (
+              <TableRow key={p.id}>
+                <TableCell className="text-sm font-medium">{p.name}</TableCell>
+                <TableCell><Badge variant="outline" className="text-xs">{p.category}</Badge></TableCell>
+                <TableCell className="text-sm">{p.pointCost.toLocaleString()}</TableCell>
+                <TableCell>
+                  <Badge variant={p.isActive ? 'default' : 'secondary'} className="text-xs">
+                    {p.isActive ? 'Active' : 'Inactive'}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-1">
+                    <ProductDialog
+                      mode="edit"
+                      initial={p}
+                      onSave={(data) => update.mutate({ id: p.id, data })}
+                      isPending={update.isPending}
+                      trigger={
+                        <Button size="sm" variant="ghost"><Pencil className="h-3.5 w-3.5" /></Button>
+                      }
+                    />
+                    {p.isActive && (
+                      <InlineConfirm
+                        buttonLabel="Deactivate"
+                        buttonClassName="text-xs text-red-600 hover:text-red-700"
+                        title="Deactivate Product"
+                        description={`Remove "${p.name}" from the store? Users who already own it are unaffected.`}
+                        onConfirm={() => deactivate.mutate(p.id)}
+                      />
+                    )}
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+    </div>
+  )
+}
+
 // ─── Main AdminPage ────────────────────────────────────────────────────────────
 
 export function AdminPage() {
@@ -692,12 +863,14 @@ export function AdminPage() {
           <TabsTrigger value="events">Events</TabsTrigger>
           <TabsTrigger value="bookings">Bookings</TabsTrigger>
           <TabsTrigger value="taxonomy">Categories & Tags</TabsTrigger>
+          <TabsTrigger value="store">Store</TabsTrigger>
         </TabsList>
         <TabsContent value="overview"><OverviewTab /></TabsContent>
         <TabsContent value="users"><UsersTab /></TabsContent>
         <TabsContent value="events"><EventsTab /></TabsContent>
         <TabsContent value="bookings"><BookingsTab /></TabsContent>
         <TabsContent value="taxonomy"><TaxonomyTab /></TabsContent>
+        <TabsContent value="store"><StoreTab /></TabsContent>
       </Tabs>
     </div>
   )
