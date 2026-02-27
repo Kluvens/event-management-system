@@ -5,4 +5,5 @@ namespace EventManagement.DTOs;
 /// </summary>
 public record UserProfileResponse(
     int UserId, string Name, string Email, string Role,
-    int LoyaltyPoints, string LoyaltyTier, bool IsSuspended);
+    int LoyaltyPoints, string LoyaltyTier, bool IsSuspended,
+    string? TwitterHandle, string? InstagramHandle);

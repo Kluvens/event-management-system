@@ -13,10 +13,13 @@ import {
   Sun,
   Moon,
   ShoppingBag,
+  Link2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,6 +27,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import {
   Sheet,
   SheetContent,
@@ -34,17 +43,52 @@ import { useAuthStore } from '@/stores/authStore'
 import { getInitials } from '@/lib/utils'
 import { NotificationBell } from '@/components/NotificationBell'
 import { useTheme } from '@/contexts/ThemeContext'
+import { useUpdateProfile } from '@/api/organizers'
+import { toast } from 'sonner'
 
 export function Navbar() {
   const navigate = useNavigate()
-  const { user, logout, isAdmin } = useAuthStore()
+  const { user, setUser, logout, isAdmin } = useAuthStore()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [socialOpen, setSocialOpen] = useState(false)
+  const [twitterVal, setTwitterVal] = useState('')
+  const [instagramVal, setInstagramVal] = useState('')
   const { theme, toggleTheme } = useTheme()
+  const updateProfile = useUpdateProfile()
 
   async function handleLogout() {
     logout()
     await signOut()
     navigate('/')
+  }
+
+  function openSocialDialog() {
+    setTwitterVal(user?.twitterHandle ?? '')
+    setInstagramVal(user?.instagramHandle ?? '')
+    setSocialOpen(true)
+  }
+
+  function handleSocialSave() {
+    updateProfile.mutate(
+      {
+        twitterHandle: twitterVal || null,
+        instagramHandle: instagramVal || null,
+      },
+      {
+        onSuccess: () => {
+          if (user) {
+            setUser({
+              ...user,
+              twitterHandle: twitterVal || null,
+              instagramHandle: instagramVal || null,
+            })
+          }
+          toast.success('Social accounts updated.')
+          setSocialOpen(false)
+        },
+        onError: () => toast.error('Failed to update social accounts.'),
+      },
+    )
   }
 
   const navLinks = (
@@ -192,6 +236,11 @@ export function Navbar() {
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={openSocialDialog}>
+                    <Link2 className="mr-2 h-4 w-4" />
+                    Social Accounts
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={handleLogout}
                     className="text-red-600 focus:text-red-600"
@@ -201,6 +250,46 @@ export function Navbar() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+
+              {/* Social accounts dialog */}
+              <Dialog open={socialOpen} onOpenChange={setSocialOpen}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Connect Social Accounts</DialogTitle>
+                  </DialogHeader>
+                  <p className="text-sm text-muted-foreground">
+                    Link your X (Twitter) and Instagram handles so others can find you.
+                  </p>
+                  <div className="space-y-4 pt-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="twitter-handle">X (Twitter) handle</Label>
+                      <Input
+                        id="twitter-handle"
+                        placeholder="@yourhandle"
+                        value={twitterVal}
+                        onChange={(e) => setTwitterVal(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="instagram-handle">Instagram handle</Label>
+                      <Input
+                        id="instagram-handle"
+                        placeholder="@yourhandle"
+                        value={instagramVal}
+                        onChange={(e) => setInstagramVal(e.target.value)}
+                      />
+                    </div>
+                    <div className="flex justify-end gap-2 pt-2">
+                      <Button variant="outline" onClick={() => setSocialOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button onClick={handleSocialSave} disabled={updateProfile.isPending}>
+                        Save
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </>
           ) : (
             <div className="flex items-center gap-2">

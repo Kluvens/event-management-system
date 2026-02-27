@@ -1,5 +1,5 @@
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { Globe, Twitter, Instagram, Users, Calendar, ArrowLeft } from 'lucide-react'
+import { Globe, X, Link2, Users, Calendar, ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
@@ -99,16 +99,26 @@ export function OrganizerProfilePage() {
               </a>
             )}
             {profile.twitterHandle && (
-              <span className="flex items-center gap-1.5 text-xs text-slate-500">
-                <Twitter className="h-3.5 w-3.5" />
+              <a
+                href={`https://x.com/${profile.twitterHandle.replace(/^@/, '')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-indigo-600"
+              >
+                <X className="h-3.5 w-3.5" />
                 {profile.twitterHandle}
-              </span>
+              </a>
             )}
             {profile.instagramHandle && (
-              <span className="flex items-center gap-1.5 text-xs text-slate-500">
-                <Instagram className="h-3.5 w-3.5" />
+              <a
+                href={`https://instagram.com/${profile.instagramHandle.replace(/^@/, '')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-indigo-600"
+              >
+                <Link2 className="h-3.5 w-3.5" />
                 {profile.instagramHandle}
-              </span>
+              </a>
             )}
           </div>
         )}

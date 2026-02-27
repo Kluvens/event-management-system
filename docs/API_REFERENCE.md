@@ -41,7 +41,9 @@ Retrieve (or auto-provision on first login) the local app-specific profile for t
   "role": "Attendee",
   "loyaltyPoints": 0,
   "loyaltyTier": "Standard",
-  "isSuspended": false
+  "isSuspended": false,
+  "twitterHandle": null,
+  "instagramHandle": null
 }
 ```
 
@@ -677,7 +679,7 @@ Each event entry in the lists includes: `eventId`, `title`, `displayStatus`, `st
 
 ### `PUT /api/organizers/me/profile` `[Auth]`
 
-Update your organizer profile. Only non-null fields are updated (PATCH semantics).
+Update your public profile (bio, website, social handles). Available to **all authenticated users** — not just organizers. Only non-null fields are updated (PATCH semantics). Used by the "Social Accounts" dialog in the navbar for X and Instagram handle management.
 
 **Request body**
 ```json

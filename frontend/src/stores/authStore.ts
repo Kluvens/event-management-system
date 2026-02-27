@@ -2,13 +2,15 @@ import { create } from 'zustand'
 import type { UserRole } from '@/types'
 
 export interface AppUser {
-  userId:        number
-  name:          string
-  email:         string
-  role:          UserRole
-  loyaltyPoints: number
-  loyaltyTier:   string
-  isSuspended:   boolean
+  userId:           number
+  name:             string
+  email:            string
+  role:             UserRole
+  loyaltyPoints:    number
+  loyaltyTier:      string
+  isSuspended:      boolean
+  twitterHandle?:   string | null
+  instagramHandle?: string | null
 }
 
 interface AuthState {
