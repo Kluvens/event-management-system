@@ -7,8 +7,8 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
+import { MarkdownEditor } from '@/components/MarkdownEditor'
 import {
   Select,
   SelectContent,
@@ -35,6 +35,9 @@ const schema = z
     categoryId: z.coerce.number().min(1, 'Select a category'),
     tagIds: z.array(z.number()),
     imageUrl: z.string().nullable().optional(),
+    termsAccepted: z.literal(true, {
+      errorMap: () => ({ message: 'You must accept the terms and conditions.' }),
+    }),
   })
   .refine((d) => new Date(d.endDate) > new Date(d.startDate), {
     message: 'End date must be after start date',
@@ -52,6 +55,7 @@ interface Props {
   onSubmit: (data: CreateEventRequest) => void
   isLoading?: boolean
   submitLabel?: string
+  showPublishButton?: boolean
 }
 
 export function EventForm({
@@ -59,6 +63,7 @@ export function EventForm({
   onSubmit,
   isLoading,
   submitLabel = 'Save',
+  showPublishButton = false,
 }: Props) {
   const { data: categories = [] } = useCategories()
   const { data: tags = [] } = useTags()
@@ -68,6 +73,7 @@ export function EventForm({
   )
   const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const publishIntentRef = useRef(false)
 
   const {
     register,
@@ -90,6 +96,7 @@ export function EventForm({
       categoryId: defaultValues?.categoryId ?? 0,
       tagIds: [],
       imageUrl: defaultValues?.imageUrl ?? null,
+      termsAccepted: undefined as unknown as true,
     },
   })
 
@@ -145,17 +152,18 @@ export function EventForm({
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
-  function submit(data: FormData) {
+  function submit({ termsAccepted: _tc, ...data }: FormData) {
     onSubmit({
       ...data,
       startDate: new Date(data.startDate).toISOString(),
       endDate: new Date(data.endDate).toISOString(),
       imageUrl: data.imageUrl ?? null,
+      publish: publishIntentRef.current,
     })
   }
 
   const err = 'text-xs text-red-500 mt-1'
-  const lbl = 'text-sm font-medium text-slate-700'
+  const lbl = 'text-sm font-medium text-foreground'
 
   return (
     <form onSubmit={handleSubmit(submit)} className="space-y-6">
@@ -163,7 +171,7 @@ export function EventForm({
       <div className="space-y-1.5">
         <Label className={lbl}>Event Image</Label>
         {imagePreview ? (
-          <div className="relative overflow-hidden rounded-xl border border-slate-200">
+          <div className="relative overflow-hidden rounded-xl border border-border">
             <img
               src={imagePreview}
               alt="Event preview"
@@ -189,7 +197,7 @@ export function EventForm({
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="flex h-40 w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 text-slate-400 transition-colors hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-500"
+            className="flex h-40 w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border bg-muted/40 text-muted-foreground transition-colors hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-500"
           >
             <ImagePlus className="h-8 w-8" />
             <span className="text-sm font-medium">Upload event image</span>
@@ -204,7 +212,7 @@ export function EventForm({
           onChange={handleImageFile}
         />
         {!imagePreview && (
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted-foreground">
             A default image based on the event category will be used if none is uploaded.
           </p>
         )}
@@ -227,12 +235,20 @@ export function EventForm({
       <div className="space-y-1.5">
         <Label htmlFor="description" className={lbl}>
           Description
+          <span className="ml-1.5 text-xs font-normal text-muted-foreground">Markdown supported</span>
         </Label>
-        <Textarea
-          id="description"
-          placeholder="Describe your event…"
-          rows={4}
-          {...register('description')}
+        <Controller
+          control={control}
+          name="description"
+          render={({ field }) => (
+            <MarkdownEditor
+              id="description"
+              value={field.value}
+              onChange={field.onChange}
+              placeholder="Describe your event… **bold**, _italic_, ## headings, - lists"
+              error={!!errors.description}
+            />
+          )}
         />
         {errors.description && (
           <p className={err}>{errors.description.message}</p>
@@ -352,7 +368,7 @@ export function EventForm({
           {tags.map((tag) => (
             <label
               key={tag.id}
-              className="flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 px-3 py-1 text-sm transition-colors hover:border-indigo-300 has-[:checked]:border-indigo-400 has-[:checked]:bg-indigo-50 has-[:checked]:text-indigo-700"
+              className="flex cursor-pointer items-center gap-1.5 rounded-full border border-border px-3 py-1 text-sm transition-colors hover:border-indigo-300 has-[:checked]:border-indigo-400 has-[:checked]:bg-indigo-50 has-[:checked]:text-indigo-700 dark:has-[:checked]:bg-indigo-950/50 dark:has-[:checked]:text-indigo-400"
             >
               <Checkbox
                 checked={watchedTagIds.includes(tag.id)}
@@ -366,10 +382,10 @@ export function EventForm({
       </div>
 
       {/* Visibility */}
-      <div className="flex items-center justify-between rounded-lg border border-slate-200 p-4">
+      <div className="flex items-center justify-between rounded-lg border border-border p-4">
         <div>
-          <p className="text-sm font-medium text-slate-700">Public Event</p>
-          <p className="text-xs text-slate-500">
+          <p className="text-sm font-medium text-foreground">Public Event</p>
+          <p className="text-xs text-muted-foreground">
             Visible to everyone on the platform
           </p>
         </div>
@@ -385,9 +401,67 @@ export function EventForm({
         />
       </div>
 
-      <Button type="submit" className="w-full" disabled={isLoading || isUploading}>
-        {isLoading ? 'Saving…' : submitLabel}
-      </Button>
+      {/* Terms & Conditions */}
+      <div className="rounded-lg border border-border bg-muted/40 p-4 space-y-3">
+        <p className="text-sm font-medium text-foreground">Terms &amp; Conditions</p>
+        <div className="text-xs text-muted-foreground space-y-1.5">
+          <p>By creating this event you agree to:</p>
+          <ul className="list-disc ml-4 space-y-1">
+            <li>Publish accurate, non-misleading event information.</li>
+            <li>Honour all confirmed bookings or provide timely cancellation notice to attendees.</li>
+            <li>Not post events that involve illegal activities, hate speech, or deceptive listings.</li>
+            <li>If you cancel a published event, all attendees will be notified immediately.</li>
+            <li>EventHub may suspend events that breach these terms without prior notice.</li>
+          </ul>
+        </div>
+        <div className="flex items-start gap-2">
+          <Controller
+            control={control}
+            name="termsAccepted"
+            render={({ field }) => (
+              <Checkbox
+                id="termsAccepted"
+                checked={field.value === true}
+                onCheckedChange={(v) => field.onChange(v === true ? true : undefined)}
+                className="mt-0.5"
+              />
+            )}
+          />
+          <label htmlFor="termsAccepted" className="text-sm text-foreground cursor-pointer">
+            I have read and agree to the terms and conditions above.
+          </label>
+        </div>
+        {errors.termsAccepted && (
+          <p className="text-xs text-red-500">{errors.termsAccepted.message}</p>
+        )}
+      </div>
+
+      {/* Submit buttons */}
+      {showPublishButton ? (
+        <div className="flex gap-3">
+          <Button
+            type="submit"
+            variant="outline"
+            className="flex-1"
+            disabled={isLoading || isUploading}
+            onClick={() => { publishIntentRef.current = false }}
+          >
+            {isLoading && !publishIntentRef.current ? 'Saving…' : 'Save as Draft'}
+          </Button>
+          <Button
+            type="submit"
+            className="flex-1"
+            disabled={isLoading || isUploading}
+            onClick={() => { publishIntentRef.current = true }}
+          >
+            {isLoading && publishIntentRef.current ? 'Publishing…' : 'Publish'}
+          </Button>
+        </div>
+      ) : (
+        <Button type="submit" className="w-full" disabled={isLoading || isUploading}>
+          {isLoading ? 'Saving…' : submitLabel}
+        </Button>
+      )}
     </form>
   )
 }
