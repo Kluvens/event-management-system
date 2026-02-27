@@ -143,6 +143,12 @@ public class ReviewsController(AppDbContext db, ICognitoUserResolver resolver)
             .FirstOrDefaultAsync(r => r.Id == reviewId && r.EventId == eventId);
         if (review is null) return NotFound();
 
+        // Only one reply per organizer per review
+        bool alreadyReplied = await db.ReviewReplies
+            .AnyAsync(rp => rp.ReviewId == reviewId && rp.UserId == userId);
+        if (alreadyReplied)
+            return Conflict(new { message = "You have already replied to this review." });
+
         var reply = new ReviewReply
         {
             ReviewId = reviewId,

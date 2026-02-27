@@ -57,6 +57,8 @@ public class BookingsController(AppDbContext db, ICognitoUserResolver resolver, 
             return BadRequest(new { message = "Cannot book a draft event." });
         if (ev.Status == StatusCancelled)
             return BadRequest(new { message = "Event has been cancelled." });
+        if (ev.StartDate <= DateTime.UtcNow)
+            return BadRequest(new { message = "Ticket sales are closed — this event has already started." });
 
         var confirmedCount = ev.Bookings.Count(b => b.Status == StatusConfirmed);
         if (confirmedCount >= ev.Capacity)

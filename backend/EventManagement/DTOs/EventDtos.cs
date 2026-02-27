@@ -11,7 +11,8 @@ public record CreateEventRequest(
     bool IsPublic,
     int CategoryId,
     List<int>? TagIds,
-    string? ImageUrl
+    string? ImageUrl,
+    bool Publish = false
 );
 
 public record UpdateEventRequest(
@@ -51,6 +52,12 @@ public record EventResponse(
     string CategoryName,
     List<string> Tags,
     string? ImageUrl
+);
+
+public record PagedEventResponse(
+    List<EventResponse> Items,
+    int TotalCount,
+    bool HasMore
 );
 
 public record EventStatsResponse(

@@ -126,6 +126,14 @@ using (var scope = app.Services.CreateScope())
     db.Database.Migrate();
 }
 
+// Seed demo data in development
+if (app.Environment.IsDevelopment())
+{
+    using var seedScope = app.Services.CreateScope();
+    var seedDb = seedScope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await SeedService.SeedDemoDataAsync(seedDb);
+}
+
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {

@@ -35,7 +35,9 @@ public class EventsController(AppDbContext db, ICognitoUserResolver resolver)
         [FromQuery] List<int>? tagIds,
         [FromQuery] DateTime? from,
         [FromQuery] DateTime? to,
-        [FromQuery] string? sortBy)
+        [FromQuery] string? sortBy,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 12)
     {
         int? userId = GetCurrentSub() is not null ? await GetCurrentUserIdAsync() : null;
         var role         = GetCurrentRole();
@@ -80,11 +82,14 @@ public class EventsController(AppDbContext db, ICognitoUserResolver resolver)
             _            => query.OrderBy(e => e.StartDate)
         };
 
-        var events = await query
+        int total = await query.CountAsync();
+        var items = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .Select(e => ToResponse(e))
             .ToListAsync();
 
-        return Ok(events);
+        return Ok(new PagedEventResponse(items, total, page * pageSize < total));
     }
 
     // ── Single ─────────────────────────────────────────────────────
@@ -162,7 +167,8 @@ public class EventsController(AppDbContext db, ICognitoUserResolver resolver)
             IsPublic    = req.IsPublic,
             CategoryId  = req.CategoryId,
             CreatedById = userId,
-            ImageUrl    = req.ImageUrl
+            ImageUrl    = req.ImageUrl,
+            Status      = req.Publish ? StatusPublished : StatusDraft
         };
 
         db.Events.Add(ev);
@@ -225,6 +231,35 @@ public class EventsController(AppDbContext db, ICognitoUserResolver resolver)
         db.EventTags.RemoveRange(ev.EventTags);
         await db.SaveChangesAsync();
         await ApplyTagsAsync(ev.Id, req.TagIds);
+
+        // Notify subscribers and bookers when a published/postponed event is updated
+        if (ev.Status is StatusPublished or StatusPostponed)
+        {
+            var subscriberIds = await db.HostSubscriptions
+                .Where(hs => hs.HostId == ev.CreatedById)
+                .Select(hs => hs.SubscriberId)
+                .ToListAsync();
+
+            var bookerIds = await db.Bookings
+                .Where(b => b.EventId == ev.Id && b.Status == StatusConfirmed)
+                .Select(b => b.UserId)
+                .ToListAsync();
+
+            var recipients = subscriberIds
+                .Union(bookerIds)
+                .Distinct()
+                .Where(uid => uid != ev.CreatedById)
+                .ToList();
+
+            db.Notifications.AddRange(recipients.Select(uid => new Notification
+            {
+                UserId  = uid,
+                Title   = $"Event updated: {ev.Title}",
+                Message = $"The details for \"{ev.Title}\" have been updated.",
+                EventId = ev.Id,
+            }));
+            await db.SaveChangesAsync();
+        }
 
         return NoContent();
     }
