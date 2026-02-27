@@ -61,6 +61,13 @@ export interface CreateEventRequest {
   categoryId: number
   tagIds: number[]
   imageUrl?: string | null
+  publish?: boolean
+}
+
+export interface PagedEventResponse {
+  items: Event[]
+  totalCount: number
+  hasMore: boolean
 }
 
 export type UpdateEventRequest = CreateEventRequest

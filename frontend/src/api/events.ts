@@ -1,4 +1,4 @@
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery, useMutation, useInfiniteQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { api } from './axios'
 import { queryClient } from '@/lib/queryClient'
@@ -10,12 +10,20 @@ import type {
   EventFilters,
   Announcement,
   CreateAnnouncementRequest,
+  PagedEventResponse,
 } from '@/types'
 
 export const eventsApi = {
   list: (filters?: EventFilters) =>
     api
-      .get<Event[]>('/events', { params: flattenFilters(filters) })
+      .get<PagedEventResponse>('/events', { params: { ...flattenFilters(filters), pageSize: 100 } })
+      .then((r) => r.data.items),
+
+  listPaged: (filters?: EventFilters, page = 1, pageSize = 12) =>
+    api
+      .get<PagedEventResponse>('/events', {
+        params: { ...flattenFilters(filters), page, pageSize },
+      })
       .then((r) => r.data),
 
   get: (id: number) => api.get<Event>(`/events/${id}`).then((r) => r.data),
@@ -62,6 +70,17 @@ export function useEvents(filters?: EventFilters) {
   })
 }
 
+export function useInfiniteEvents(filters?: EventFilters) {
+  return useInfiniteQuery({
+    queryKey: ['events', 'infinite', filters],
+    queryFn: ({ pageParam }) =>
+      eventsApi.listPaged(filters, pageParam as number),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, _allPages, lastPageParam) =>
+      lastPage.hasMore ? (lastPageParam as number) + 1 : undefined,
+  })
+}
+
 export function useEvent(id: number | undefined) {
   return useQuery({
     queryKey: ['events', id],
@@ -89,9 +108,9 @@ export function useAnnouncements(eventId: number | undefined) {
 export function useCreateEvent() {
   return useMutation({
     mutationFn: eventsApi.create,
-    onSuccess: () => {
+    onSuccess: (event) => {
       queryClient.invalidateQueries({ queryKey: ['events'] })
-      toast.success('Event created as draft.')
+      toast.success(event.status === 'Published' ? 'Event published!' : 'Draft saved.')
     },
     onError: () => toast.error('Failed to create event.'),
   })
