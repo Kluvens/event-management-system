@@ -18,6 +18,9 @@ import { OrganizerProfilePage } from '@/pages/OrganizerProfilePage'
 import { AdminPage } from '@/pages/AdminPage'
 import { CheckInScannerPage } from '@/pages/CheckInScannerPage'
 import { StorePage } from '@/pages/StorePage'
+import { ProfilePage } from '@/pages/ProfilePage'
+import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage'
+import { ResetPasswordPage } from '@/pages/ResetPasswordPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 
 export const router = createBrowserRouter([
@@ -33,6 +36,7 @@ export const router = createBrowserRouter([
       {
         element: <ProtectedRoute />,
         children: [
+          { path: 'profile', element: <ProfilePage /> },
           { path: 'my-bookings', element: <MyBookingsPage /> },
           { path: 'favorites', element: <FavoritesPage /> },
           { path: 'store', element: <StorePage /> },
@@ -57,6 +61,8 @@ export const router = createBrowserRouter([
     children: [
       { path: '/login', element: <LoginPage /> },
       { path: '/register', element: <RegisterPage /> },
+      { path: '/forgot-password', element: <ForgotPasswordPage /> },
+      { path: '/reset-password', element: <ResetPasswordPage /> },
     ],
   },
   { path: '/confirm-email', element: <ConfirmEmailPage /> },

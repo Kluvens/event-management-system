@@ -96,10 +96,11 @@ public class OrganizersController(AppDbContext db, ICognitoUserResolver resolver
         var user = await db.Users.FindAsync(userId);
         if (user is null) return NotFound();
 
-        if (req.Bio             is not null) user.Bio             = req.Bio;
-        if (req.Website         is not null) user.Website         = req.Website;
-        if (req.TwitterHandle   is not null) user.TwitterHandle   = req.TwitterHandle;
-        if (req.InstagramHandle is not null) user.InstagramHandle = req.InstagramHandle;
+        if (!string.IsNullOrWhiteSpace(req.Name)) user.Name = req.Name.Trim();
+        user.Bio             = req.Bio;
+        user.Website         = req.Website;
+        user.TwitterHandle   = req.TwitterHandle;
+        user.InstagramHandle = req.InstagramHandle;
 
         await db.SaveChangesAsync();
         return NoContent();

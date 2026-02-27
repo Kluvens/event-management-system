@@ -31,6 +31,7 @@ public class AuthController(AppDbContext db, ICognitoUserResolver resolver) : Ap
         return Ok(new UserProfileResponse(
             user.Id, user.Name, user.Email, user.Role,
             user.LoyaltyPoints, user.LoyaltyTier, user.IsSuspended,
-            user.TwitterHandle, user.InstagramHandle));
+            user.TwitterHandle, user.InstagramHandle,
+            user.Bio, user.Website));
     }
 }

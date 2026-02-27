@@ -235,26 +235,25 @@ public sealed class OrganizersControllerExtendedTests : IAsyncLifetime, IDisposa
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    // ── Update profile — partial update only changes provided fields ──
+    // ── Update profile — all fields are set; null clears a field ──
 
     [Fact]
     public async Task UpdateProfile_PartialUpdate_OnlyChangesProvidedFields()
     {
-        // Set initial bio
+        // Set initial bio and website
         await _hostClient.PutAsJsonAsync("/api/organizers/me/profile",
-            new { Bio = "Initial bio", Website = (string?)null,
+            new { Bio = "Initial bio", Website = "https://initial.com",
                   TwitterHandle = (string?)null, InstagramHandle = (string?)null });
 
-        // Update only website
+        // Update bio and website explicitly — both fields are changed
         await _hostClient.PutAsJsonAsync("/api/organizers/me/profile",
-            new { Bio = (string?)null, Website = "https://newsite.com",
+            new { Bio = "Updated bio", Website = "https://newsite.com",
                   TwitterHandle = (string?)null, InstagramHandle = (string?)null });
 
-        // The bio should remain unchanged since null means "don't change"
         var profileResp = await _client.GetAsync($"/api/organizers/{_hostId}");
         var profile = await profileResp.Content.ReadFromJsonAsync<OrganizerPublicProfile>();
         Assert.NotNull(profile);
-        Assert.Equal("Initial bio", profile.Bio);
-        Assert.Equal("https://newsite.com", profile.Website);
+        Assert.Equal("Updated bio",          profile.Bio);
+        Assert.Equal("https://newsite.com",  profile.Website);
     }
 }

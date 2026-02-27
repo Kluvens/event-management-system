@@ -181,6 +181,106 @@ public sealed class AuthControllerTests : IDisposable
         Assert.Equal("@pubhandle",    profile.TwitterHandle);
         Assert.Equal("@pubhandle_ig", profile.InstagramHandle);
     }
+
+    // ── Profile page: name, bio, website ──────────────────────────────────────
+
+    [Fact]
+    public async Task GetMe_NewUser_BioAndWebsiteAreNull()
+    {
+        var token = await ApiClient.RegisterAndLoginAsync(
+            _client, "Bio Null User", "bionull@auth.test", "Password1!");
+        var userClient = ApiClient.WithToken(_factory, token);
+
+        var resp = await userClient.GetAsync("/api/auth/me");
+        var profile = await resp.Content.ReadFromJsonAsync<UserProfileResponse>();
+
+        Assert.NotNull(profile);
+        Assert.Null(profile.Bio);
+        Assert.Null(profile.Website);
+    }
+
+    [Fact]
+    public async Task UpdateProfile_Name_ChangesNameInGetMe()
+    {
+        var token = await ApiClient.RegisterAndLoginAsync(
+            _client, "Original Name", "namechange@auth.test", "Password1!");
+        var userClient = ApiClient.WithToken(_factory, token);
+
+        var updateResp = await userClient.PutAsJsonAsync("/api/organizers/me/profile", new
+        {
+            name = "Updated Name"
+        });
+        Assert.Equal(HttpStatusCode.NoContent, updateResp.StatusCode);
+
+        var meResp = await userClient.GetAsync("/api/auth/me");
+        var profile = await meResp.Content.ReadFromJsonAsync<UserProfileResponse>();
+        Assert.NotNull(profile);
+        Assert.Equal("Updated Name", profile.Name);
+    }
+
+    [Fact]
+    public async Task UpdateProfile_EmptyName_DoesNotChangeName()
+    {
+        var token = await ApiClient.RegisterAndLoginAsync(
+            _client, "Keep My Name", "keepname@auth.test", "Password1!");
+        var userClient = ApiClient.WithToken(_factory, token);
+
+        // Sending empty/whitespace name should be ignored by the backend
+        await userClient.PutAsJsonAsync("/api/organizers/me/profile", new
+        {
+            name = "   "
+        });
+
+        var meResp = await userClient.GetAsync("/api/auth/me");
+        var profile = await meResp.Content.ReadFromJsonAsync<UserProfileResponse>();
+        Assert.NotNull(profile);
+        Assert.Equal("Keep My Name", profile.Name);
+    }
+
+    [Fact]
+    public async Task UpdateProfile_BioAndWebsite_ReturnedInGetMe()
+    {
+        var token = await ApiClient.RegisterAndLoginAsync(
+            _client, "Bio User", "bioupdate@auth.test", "Password1!");
+        var userClient = ApiClient.WithToken(_factory, token);
+
+        await userClient.PutAsJsonAsync("/api/organizers/me/profile", new
+        {
+            bio     = "Event enthusiast from SF",
+            website = "https://example.com"
+        });
+
+        var meResp = await userClient.GetAsync("/api/auth/me");
+        var profile = await meResp.Content.ReadFromJsonAsync<UserProfileResponse>();
+        Assert.NotNull(profile);
+        Assert.Equal("Event enthusiast from SF", profile.Bio);
+        Assert.Equal("https://example.com",      profile.Website);
+    }
+
+    [Fact]
+    public async Task UpdateProfile_SetBioThenClearIt_ReturnsNull()
+    {
+        var token = await ApiClient.RegisterAndLoginAsync(
+            _client, "Bio Clear User", "bioclear@auth.test", "Password1!");
+        var userClient = ApiClient.WithToken(_factory, token);
+
+        // Set bio
+        await userClient.PutAsJsonAsync("/api/organizers/me/profile", new
+        {
+            bio = "Temporary bio"
+        });
+
+        // Clear bio by sending null
+        await userClient.PutAsJsonAsync("/api/organizers/me/profile", new
+        {
+            bio = (string?)null
+        });
+
+        var meResp = await userClient.GetAsync("/api/auth/me");
+        var profile = await meResp.Content.ReadFromJsonAsync<UserProfileResponse>();
+        Assert.NotNull(profile);
+        Assert.Null(profile.Bio);
+    }
 }
 
 internal record AuthOrganizerProfile(

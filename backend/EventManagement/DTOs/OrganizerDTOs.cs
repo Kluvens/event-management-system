@@ -1,6 +1,7 @@
 namespace EventManagement.DTOs;
 
 public record UpdateOrganizerProfileRequest(
+    string? Name,
     string? Bio,
     string? Website,
     string? TwitterHandle,

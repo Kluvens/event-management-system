@@ -5,6 +5,8 @@ import {
   confirmSignUp,
   updatePassword,
   signInWithRedirect,
+  resetPassword,
+  confirmResetPassword,
 } from 'aws-amplify/auth'
 import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -99,6 +101,33 @@ export function useChangePassword() {
     onSuccess: () => toast.success('Password updated.'),
     onError: (err: unknown) =>
       toast.error((err as Error).message ?? 'Failed to update password.'),
+  })
+}
+
+// ── Forgot / Reset password ─────────────────────────────────────────────────
+
+export function useForgotPassword() {
+  return useMutation({
+    mutationFn: (email: string) => resetPassword({ username: email }),
+    onError: (err: unknown) =>
+      toast.error((err as Error).message ?? 'Failed to send reset code.'),
+  })
+}
+
+export function useResetPassword() {
+  return useMutation({
+    mutationFn: ({
+      email,
+      code,
+      newPassword,
+    }: {
+      email: string
+      code: string
+      newPassword: string
+    }) => confirmResetPassword({ username: email, confirmationCode: code, newPassword }),
+    onSuccess: () => toast.success('Password reset! You can now sign in.'),
+    onError: (err: unknown) =>
+      toast.error((err as Error).message ?? 'Failed to reset password.'),
   })
 }
 

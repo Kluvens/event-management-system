@@ -210,6 +210,7 @@ export interface OrganizerProfile {
 }
 
 export interface UpdateOrganizerProfileRequest {
+  name?: string
   bio?: string | null
   website?: string | null
   twitterHandle?: string | null

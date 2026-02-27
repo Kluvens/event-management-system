@@ -11,6 +11,8 @@ export interface AppUser {
   isSuspended:      boolean
   twitterHandle?:   string | null
   instagramHandle?: string | null
+  bio?:             string | null
+  website?:         string | null
 }
 
 interface AuthState {

@@ -14,6 +14,7 @@ import {
   Moon,
   ShoppingBag,
   Link2,
+  UserCircle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -71,6 +72,9 @@ export function Navbar() {
   function handleSocialSave() {
     updateProfile.mutate(
       {
+        name: user?.name,
+        bio: user?.bio,
+        website: user?.website,
         twitterHandle: twitterVal || null,
         instagramHandle: instagramVal || null,
       },
@@ -213,6 +217,10 @@ export function Navbar() {
                     </p>
                   </div>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate('/profile')}>
+                    <UserCircle className="mr-2 h-4 w-4" />
+                    My Profile
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate('/my-bookings')}>
                     <Ticket className="mr-2 h-4 w-4" />
                     My Bookings
