@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import {
   Calendar,
   MapPin,
@@ -153,7 +155,7 @@ export function EventDetailPage() {
   if (error || !event) {
     return (
       <div className="container mx-auto max-w-4xl px-4 py-16 text-center">
-        <p className="text-slate-500">Event not found.</p>
+        <p className="text-muted-foreground">Event not found.</p>
         <Button variant="ghost" onClick={() => navigate(-1)} className="mt-4">
           Go back
         </Button>
@@ -175,14 +177,14 @@ export function EventDetailPage() {
     <div className="container mx-auto max-w-5xl px-4 py-8">
       <button
         onClick={() => navigate(-1)}
-        className="mb-6 flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800"
+        className="mb-6 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" />
         Back
       </button>
 
       {/* Header card */}
-      <div className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="mb-6 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
         {/* Hero image */}
         {event.imageUrl && (
           <div className="h-64 w-full overflow-hidden sm:h-80">
@@ -249,24 +251,24 @@ export function EventDetailPage() {
           )}
         </div>
 
-        <h1 className="mb-4 text-2xl font-bold text-slate-900 sm:text-3xl">
+        <h1 className="mb-4 text-2xl font-bold text-foreground sm:text-3xl">
           {event.title}
         </h1>
 
         <div className="mb-5 grid gap-2.5 sm:grid-cols-2">
-          <div className="flex items-center gap-2 text-sm text-slate-600">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Calendar className="h-4 w-4 shrink-0 text-indigo-500" />
             <span>{formatDateRange(event.startDate, event.endDate)}</span>
           </div>
-          <div className="flex items-center gap-2 text-sm text-slate-600">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <MapPin className="h-4 w-4 shrink-0 text-indigo-500" />
             <span>{event.location}</span>
           </div>
-          <div className="flex items-center gap-2 text-sm text-slate-600">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <DollarSign className="h-4 w-4 shrink-0 text-indigo-500" />
             <span className="font-medium">{formatCurrency(event.price)}</span>
           </div>
-          <div className="flex items-center gap-2 text-sm text-slate-600">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Users className="h-4 w-4 shrink-0 text-indigo-500" />
             <span>
               {event.bookingCount}/{event.capacity} booked
@@ -282,7 +284,7 @@ export function EventDetailPage() {
         </div>
 
         {/* Organizer */}
-        <div className="mb-5 flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50 px-4 py-3">
+        <div className="mb-5 flex items-center justify-between rounded-lg border border-border bg-muted/50 px-4 py-3">
           <Link
             to={`/organizers/${event.createdById}`}
             className="flex items-center gap-2 hover:opacity-80"
@@ -294,7 +296,7 @@ export function EventDetailPage() {
             </Avatar>
             <div>
               <p className="text-sm font-medium">{event.createdByName}</p>
-              <p className="text-xs text-slate-500">Organizer</p>
+              <p className="text-xs text-muted-foreground">Organizer</p>
             </div>
           </Link>
           {user && user?.userId !== event.createdById && (
@@ -339,7 +341,7 @@ export function EventDetailPage() {
             ) : event.displayStatus === 'SoldOut' ? (
               waitlistPos ? (
                 <div className="flex items-center gap-3">
-                  <span className="text-sm text-slate-600">
+                  <span className="text-sm text-muted-foreground">
                     You&apos;re #{waitlistPos.position} on the waitlist
                   </span>
                   <Button
@@ -395,11 +397,21 @@ export function EventDetailPage() {
         {/* About */}
         <TabsContent
           value="about"
-          className="rounded-xl border border-slate-200 bg-white p-6"
+          className="rounded-xl border border-border bg-card p-6"
         >
-          <p className="mb-6 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
-            {event.description}
-          </p>
+          <div className="mb-6 prose prose-sm dark:prose-invert max-w-none
+            prose-headings:text-foreground prose-headings:font-semibold
+            prose-p:text-foreground prose-p:leading-relaxed
+            prose-strong:text-foreground prose-em:text-foreground
+            prose-code:rounded prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:text-foreground prose-code:before:content-none prose-code:after:content-none
+            prose-pre:bg-muted prose-pre:text-foreground
+            prose-ul:text-foreground prose-ol:text-foreground prose-li:text-foreground
+            prose-a:text-indigo-600 prose-a:no-underline hover:prose-a:underline
+            prose-blockquote:border-border prose-blockquote:text-muted-foreground
+            prose-hr:border-border
+          ">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{event.description}</ReactMarkdown>
+          </div>
           {event.tags.length > 0 && (
             <div className="mb-6 flex flex-wrap gap-2">
               {event.tags.map((tag) => (
@@ -414,8 +426,8 @@ export function EventDetailPage() {
           )}
 
           {/* Location & Map */}
-          <div className="border-t border-slate-100 pt-6">
-            <h2 className="mb-4 text-xl font-bold text-slate-900">Location</h2>
+          <div className="border-t border-border pt-6">
+            <h2 className="mb-4 text-xl font-bold text-foreground">Location</h2>
 
             {/* Venue name + address */}
             {(() => {
@@ -430,9 +442,9 @@ export function EventDetailPage() {
                   : null
               return (
                 <div className="mb-4">
-                  <p className="font-semibold text-slate-900">{venueName}</p>
+                  <p className="font-semibold text-foreground">{venueName}</p>
                   {address && (
-                    <p className="text-sm text-slate-500 whitespace-pre-line">
+                    <p className="text-sm text-muted-foreground whitespace-pre-line">
                       {address.replace(/,\s*/g, '\n')}
                     </p>
                   )}
@@ -441,7 +453,7 @@ export function EventDetailPage() {
             })()}
 
             {/* Embedded map */}
-            <div className="mb-6 overflow-hidden rounded-xl border border-slate-200">
+            <div className="mb-6 overflow-hidden rounded-xl border border-border">
               <iframe
                 title="Event location on Google Maps"
                 src={`https://maps.google.com/maps?q=${encodeURIComponent(event.location)}&output=embed`}
@@ -453,8 +465,8 @@ export function EventDetailPage() {
             </div>
 
             {/* Transport options */}
-            <div className="border-t border-slate-100 pt-5">
-              <h3 className="mb-4 text-base font-bold text-slate-900">
+            <div className="border-t border-border pt-5">
+              <h3 className="mb-4 text-base font-bold text-foreground">
                 How would you like to get there?
               </h3>
               <ul className="space-y-3">
@@ -486,7 +498,7 @@ export function EventDetailPage() {
         {/* Announcements */}
         <TabsContent value="announcements" className="space-y-4">
           {canManage && (
-            <div className="rounded-xl border border-slate-200 bg-white p-5">
+            <div className="rounded-xl border border-border bg-card p-5">
               <h3 className="mb-3 text-sm font-semibold">Post Announcement</h3>
               <form
                 onSubmit={announcementForm.handleSubmit((d) =>
@@ -517,7 +529,7 @@ export function EventDetailPage() {
             </div>
           )}
           {announcements.length === 0 ? (
-            <div className="rounded-xl border border-slate-200 bg-white px-6 py-10 text-center text-sm text-slate-500">
+            <div className="rounded-xl border border-border bg-card px-6 py-10 text-center text-sm text-muted-foreground">
               No announcements yet.
             </div>
           ) : (
@@ -527,12 +539,12 @@ export function EventDetailPage() {
                 className="rounded-xl border border-slate-200 bg-white p-5"
               >
                 <div className="mb-1 flex items-start justify-between">
-                  <h4 className="font-semibold text-slate-900">{a.title}</h4>
-                  <span className="text-xs text-slate-400">
+                  <h4 className="font-semibold text-foreground">{a.title}</h4>
+                  <span className="text-xs text-muted-foreground">
                     {formatRelative(a.createdAt)}
                   </span>
                 </div>
-                <p className="text-sm text-slate-600">{a.message}</p>
+                <p className="text-sm text-muted-foreground">{a.message}</p>
               </div>
             ))
           )}
@@ -541,7 +553,7 @@ export function EventDetailPage() {
         {/* Reviews */}
         <TabsContent value="reviews" className="space-y-4">
           {canReview && (
-            <div className="rounded-xl border border-slate-200 bg-white p-5">
+            <div className="rounded-xl border border-border bg-card p-5">
               <h3 className="mb-3 text-sm font-semibold">Write a Review</h3>
               <form
                 onSubmit={reviewForm.handleSubmit((d) =>
@@ -560,7 +572,7 @@ export function EventDetailPage() {
                     className="w-20"
                     {...reviewForm.register('rating')}
                   />
-                  <span className="text-sm text-slate-500">/ 5</span>
+                  <span className="text-sm text-muted-foreground">/ 5</span>
                 </div>
                 <Textarea
                   placeholder="Share your experience…"
@@ -583,23 +595,23 @@ export function EventDetailPage() {
             </div>
           )}
           {reviews.length === 0 ? (
-            <div className="rounded-xl border border-slate-200 bg-white px-6 py-10 text-center text-sm text-slate-500">
+            <div className="rounded-xl border border-border bg-card px-6 py-10 text-center text-sm text-muted-foreground">
               No reviews yet. Be the first!
             </div>
           ) : (
             reviews.map((review) => (
               <div
                 key={review.id}
-                className={`rounded-xl border bg-white p-5 ${
+                className={`rounded-xl border p-5 ${
                   review.isPinned
-                    ? 'border-indigo-200 bg-indigo-50/30'
-                    : 'border-slate-200'
+                    ? 'border-indigo-200 bg-indigo-50/30 dark:border-indigo-800 dark:bg-indigo-950/20'
+                    : 'border-border bg-card'
                 }`}
               >
                 <div className="mb-2 flex items-start justify-between">
                   <div className="flex items-center gap-2">
                     <Avatar className="h-8 w-8">
-                      <AvatarFallback className="bg-slate-100 text-xs">
+                      <AvatarFallback className="bg-muted text-xs">
                         {getInitials(review.userName)}
                       </AvatarFallback>
                     </Avatar>
@@ -612,7 +624,7 @@ export function EventDetailPage() {
                             className={
                               i < review.rating
                                 ? 'text-amber-400'
-                                : 'text-slate-200'
+                                : 'text-slate-200 dark:text-zinc-700'
                             }
                           >
                             ★
@@ -627,7 +639,7 @@ export function EventDetailPage() {
                     )}
                   </div>
                   <div className="flex items-center gap-1">
-                    <span className="text-xs text-slate-400">
+                    <span className="text-xs text-muted-foreground">
                       {formatRelative(review.createdAt)}
                     </span>
                     {canManage && (
@@ -653,9 +665,9 @@ export function EventDetailPage() {
                   </div>
                 </div>
 
-                <p className="mb-3 text-sm text-slate-700">{review.comment}</p>
+                <p className="mb-3 text-sm text-foreground">{review.comment}</p>
 
-                <div className="mb-3 flex items-center gap-3 text-xs text-slate-500">
+                <div className="mb-3 flex items-center gap-3 text-xs text-muted-foreground">
                   <button
                     onClick={() =>
                       user &&
@@ -689,16 +701,16 @@ export function EventDetailPage() {
                 </div>
 
                 {review.replies.length > 0 && (
-                  <div className="ml-4 space-y-2 border-l-2 border-slate-100 pl-4">
+                  <div className="ml-4 space-y-2 border-l-2 border-border pl-4">
                     {review.replies.map((reply) => (
                       <div key={reply.id}>
-                        <span className="text-xs font-medium text-slate-700">
+                        <span className="text-xs font-medium text-foreground">
                           {reply.userName}
                         </span>
-                        <span className="ml-2 text-xs text-slate-400">
+                        <span className="ml-2 text-xs text-muted-foreground">
                           {formatRelative(reply.createdAt)}
                         </span>
-                        <p className="text-xs text-slate-600">{reply.comment}</p>
+                        <p className="text-xs text-muted-foreground">{reply.comment}</p>
                       </div>
                     ))}
                   </div>

@@ -26,6 +26,26 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url)
 }
 
+function getBookingLabel(b: Booking): string {
+  if (b.status === 'Cancelled') return 'Cancelled by You'
+  const now = Date.now()
+  const start = new Date(b.eventStartDate).getTime()
+  const end = new Date(b.eventEndDate).getTime()
+  if (end < now) return 'Event Completed'
+  if (start <= now) return 'Happening Now'
+  return 'Upcoming'
+}
+
+function getLabelClass(b: Booking): string {
+  if (b.status === 'Cancelled') return 'border-red-200 bg-red-50 text-red-600'
+  const now = Date.now()
+  if (new Date(b.eventEndDate).getTime() < now)
+    return 'border-border bg-muted text-muted-foreground'
+  if (new Date(b.eventStartDate).getTime() <= now)
+    return 'border-emerald-200 bg-emerald-50 text-emerald-700'
+  return 'border-indigo-200 bg-indigo-50 text-indigo-700'
+}
+
 export function MyBookingsPage() {
   const { data: bookings = [], isPending } = useMineBookings()
   const cancel = useCancelBooking()
@@ -42,23 +62,23 @@ export function MyBookingsPage() {
 
   function BookingCard({ booking, isPast = false }: { booking: Booking; isPast?: boolean }) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md sm:p-5">
+      <div className="rounded-xl border border-border bg-card p-4 shadow-sm transition-shadow hover:shadow-md sm:p-5">
         <div className="mb-3 flex items-start justify-between gap-3">
           <Link
             to={`/events/${booking.eventId}`}
-            className="text-sm font-semibold text-slate-900 hover:text-indigo-600 sm:text-base"
+            className="text-sm font-semibold text-card-foreground hover:text-indigo-600 sm:text-base"
           >
             {booking.eventTitle}
           </Link>
           <Badge
-            variant={isPast ? 'secondary' : 'default'}
-            className="shrink-0 text-xs"
+            variant="outline"
+            className={`shrink-0 text-xs ${getLabelClass(booking)}`}
           >
-            {isPast ? 'Completed' : booking.status}
+            {getBookingLabel(booking)}
           </Badge>
         </div>
 
-        <div className="mb-3 space-y-1.5 text-xs text-slate-500 sm:text-sm">
+        <div className="mb-3 space-y-1.5 text-xs text-muted-foreground sm:text-sm">
           <div className="flex items-center gap-2">
             <Calendar className="h-3.5 w-3.5 shrink-0" />
             {formatDate(booking.eventStartDate, 'MMM d, yyyy · h:mm a')}
@@ -70,7 +90,7 @@ export function MyBookingsPage() {
         </div>
 
         <div className="mb-4 flex items-center justify-between text-sm">
-          <span className="font-medium text-slate-700">
+          <span className="font-medium text-foreground">
             {formatCurrency(booking.eventPrice)}
           </span>
           {booking.pointsEarned > 0 && (
@@ -137,8 +157,8 @@ export function MyBookingsPage() {
   return (
     <div className="container mx-auto max-w-3xl px-4 py-6 sm:py-8">
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">My Bookings</h1>
-        <p className="mt-1 text-xs text-slate-500 sm:text-sm">
+        <h1 className="text-xl font-bold text-foreground sm:text-2xl">My Bookings</h1>
+        <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
           {upcoming.length} upcoming · {past.length} past · {cancelled.length} cancelled
         </p>
       </div>
@@ -158,8 +178,8 @@ export function MyBookingsPage() {
 
         <TabsContent value="upcoming" className="space-y-3">
           {upcoming.length === 0 ? (
-            <div className="rounded-xl border border-slate-200 bg-white py-12 text-center">
-              <p className="text-slate-500">No upcoming bookings.</p>
+            <div className="rounded-xl border border-border bg-card py-12 text-center">
+              <p className="text-muted-foreground">No upcoming bookings.</p>
               <Button asChild className="mt-4" variant="outline">
                 <Link to="/">Browse Events</Link>
               </Button>
@@ -171,7 +191,7 @@ export function MyBookingsPage() {
 
         <TabsContent value="past" className="space-y-3">
           {past.length === 0 ? (
-            <div className="rounded-xl border border-slate-200 bg-white py-12 text-center text-slate-500">
+            <div className="rounded-xl border border-border bg-card py-12 text-center text-muted-foreground">
               No past events yet.
             </div>
           ) : (
@@ -181,7 +201,7 @@ export function MyBookingsPage() {
 
         <TabsContent value="cancelled" className="space-y-3">
           {cancelled.length === 0 ? (
-            <div className="rounded-xl border border-slate-200 bg-white py-12 text-center text-slate-500">
+            <div className="rounded-xl border border-border bg-card py-12 text-center text-muted-foreground">
               No cancelled bookings.
             </div>
           ) : (
@@ -197,11 +217,11 @@ export function MyBookingsPage() {
             <DialogTitle>Check-In QR Code</DialogTitle>
           </DialogHeader>
           <div className="flex flex-col items-center gap-4 py-4">
-            <p className="text-center text-sm font-medium text-slate-700">
+            <p className="text-center text-sm font-medium text-foreground">
               {qrBooking?.eventTitle}
             </p>
             <QRCodeSVG value={qrBooking?.checkInToken ?? ''} size={200} />
-            <p className="break-all text-center font-mono text-xs text-slate-400">
+            <p className="break-all text-center font-mono text-xs text-muted-foreground">
               {qrBooking?.checkInToken}
             </p>
           </div>

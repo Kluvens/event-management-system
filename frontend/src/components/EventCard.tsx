@@ -77,18 +77,18 @@ export function EventCard({ event }: Props) {
 
   // Only show one pill — priority: Almost Full > Starts Soon > New
   const pill = isAlmostFull
-    ? { label: 'Almost full', classes: 'bg-rose-50 text-rose-600' }
+    ? { label: 'Almost full', classes: 'bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400' }
     : isStartingSoon
-    ? { label: 'Starts soon', classes: 'bg-amber-50 text-amber-700' }
+    ? { label: 'Starts soon', classes: 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400' }
     : isNew
-    ? { label: 'New',         classes: 'bg-indigo-50 text-indigo-600' }
+    ? { label: 'New',         classes: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400' }
     : null
 
   return (
     <Link
       to={`/events/${event.id}`}
       className={cn(
-        'group block overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-900/5 transition-shadow duration-200 hover:shadow-md',
+        'group block overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-border transition-shadow duration-200 hover:shadow-md',
         isDimmed && 'opacity-60 grayscale'
       )}
     >
@@ -127,21 +127,21 @@ export function EventCard({ event }: Props) {
           </span>
         )}
 
-        <h3 className="mb-2 line-clamp-2 text-sm font-semibold leading-snug text-slate-900 sm:text-base">
+        <h3 className="mb-2 line-clamp-2 text-sm font-semibold leading-snug text-card-foreground sm:text-base">
           {event.title}
         </h3>
 
-        <div className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-slate-800 sm:text-sm">
-          <Calendar className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+        <div className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-card-foreground sm:text-sm">
+          <Calendar className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           <span className="truncate">{formatDateRange(event.startDate, event.endDate)}</span>
         </div>
 
-        <div className="mb-3 flex items-center gap-1.5 text-xs text-slate-500 sm:text-sm">
+        <div className="mb-3 flex items-center gap-1.5 text-xs text-muted-foreground sm:text-sm">
           <MapPin className="h-3.5 w-3.5 shrink-0" />
           <span className="truncate">{event.location}</span>
         </div>
 
-        <p className={cn('text-sm font-bold sm:text-base', isFree ? 'text-emerald-600' : 'text-slate-900')}>
+        <p className={cn('text-sm font-bold sm:text-base', isFree ? 'text-emerald-600' : 'text-card-foreground')}>
           {isFree ? 'Free' : formatCurrency(event.price)}
         </p>
       </div>

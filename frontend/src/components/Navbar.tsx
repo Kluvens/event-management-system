@@ -10,6 +10,8 @@ import {
   ShieldCheck,
   Plus,
   Heart,
+  Sun,
+  Moon,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -30,11 +32,13 @@ import { signOut } from 'aws-amplify/auth'
 import { useAuthStore } from '@/stores/authStore'
 import { getInitials } from '@/lib/utils'
 import { NotificationBell } from '@/components/NotificationBell'
+import { useTheme } from '@/contexts/ThemeContext'
 
 export function Navbar() {
   const navigate = useNavigate()
   const { user, logout, isAdmin } = useAuthStore()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const { theme, toggleTheme } = useTheme()
 
   async function handleLogout() {
     logout()
@@ -46,7 +50,7 @@ export function Navbar() {
     <>
       <Link
         to="/"
-        className="text-sm font-medium text-slate-600 transition-colors hover:text-slate-900"
+        className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
         onClick={() => setMobileOpen(false)}
       >
         Browse Events
@@ -54,7 +58,7 @@ export function Navbar() {
       {user && (
         <Link
           to="/my-bookings"
-          className="text-sm font-medium text-slate-600 transition-colors hover:text-slate-900"
+          className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           onClick={() => setMobileOpen(false)}
         >
           My Bookings
@@ -63,7 +67,7 @@ export function Navbar() {
       {user && (
         <Link
           to="/favorites"
-          className="flex items-center gap-1.5 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900"
+          className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           onClick={() => setMobileOpen(false)}
         >
           <Heart className="h-3.5 w-3.5" />
@@ -73,7 +77,7 @@ export function Navbar() {
       {user && (
         <Link
           to="/dashboard"
-          className="text-sm font-medium text-slate-600 transition-colors hover:text-slate-900"
+          className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           onClick={() => setMobileOpen(false)}
         >
           Dashboard
@@ -92,12 +96,12 @@ export function Navbar() {
   )
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
+    <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       <div className="container mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
         {/* Logo */}
         <Link
           to="/"
-          className="flex items-center gap-1.5 font-bold text-slate-900"
+          className="flex items-center gap-1.5 font-bold text-foreground"
         >
           <Zap className="h-5 w-5 text-indigo-600" />
           <span>EventHub</span>
@@ -122,6 +126,19 @@ export function Navbar() {
 
               <NotificationBell />
 
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleTheme}
+                aria-label="Toggle theme"
+              >
+                {theme === 'dark' ? (
+                  <Sun className="h-5 w-5" />
+                ) : (
+                  <Moon className="h-5 w-5" />
+                )}
+              </Button>
+
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="flex items-center rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
@@ -135,7 +152,7 @@ export function Navbar() {
                 <DropdownMenuContent align="end" className="w-52">
                   <div className="px-2 py-1.5">
                     <p className="text-sm font-medium">{user?.name}</p>
-                    <p className="text-xs text-slate-500">{user?.email}</p>
+                    <p className="text-xs text-muted-foreground">{user?.email}</p>
                     <p className="mt-0.5 text-xs font-medium text-indigo-600">
                       {user?.role}
                     </p>
@@ -172,6 +189,18 @@ export function Navbar() {
             </>
           ) : (
             <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleTheme}
+                aria-label="Toggle theme"
+              >
+                {theme === 'dark' ? (
+                  <Sun className="h-5 w-5" />
+                ) : (
+                  <Moon className="h-5 w-5" />
+                )}
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"

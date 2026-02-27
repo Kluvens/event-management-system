@@ -75,14 +75,14 @@ function StatCard({
   color: string
 }>) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-slate-500">{label}</p>
+        <p className="text-sm text-muted-foreground">{label}</p>
         <div className={`rounded-lg p-2 ${color}`}>
           <Icon className="h-4 w-4 text-white" />
         </div>
       </div>
-      <p className="mt-2 text-2xl font-bold text-slate-900">{value}</p>
+      <p className="mt-2 text-2xl font-bold text-card-foreground">{value}</p>
     </div>
   )
 }
@@ -99,10 +99,10 @@ function ExpandableEventRow({ event }: { event: DashboardEvent }) {
   return (
     <>
       <TableRow
-        className="cursor-pointer hover:bg-slate-50"
+        className="cursor-pointer hover:bg-muted/50"
         onClick={() => setExpanded((v) => !v)}
       >
-        <TableCell className="font-medium text-slate-900">{event.title}</TableCell>
+        <TableCell className="font-medium text-foreground">{event.title}</TableCell>
         <TableCell>{formatDate(event.startDate)}</TableCell>
         <TableCell>
           {event.confirmedBookings}/{event.capacity}
@@ -119,47 +119,47 @@ function ExpandableEventRow({ event }: { event: DashboardEvent }) {
               </Button>
             </Link>
             {expanded ? (
-              <ChevronUp className="h-4 w-4 text-slate-400" />
+              <ChevronUp className="h-4 w-4 text-muted-foreground" />
             ) : (
-              <ChevronDown className="h-4 w-4 text-slate-400" />
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
             )}
           </div>
         </TableCell>
       </TableRow>
       {expanded && (
         <TableRow>
-          <TableCell colSpan={6} className="bg-slate-50 p-4">
+          <TableCell colSpan={6} className="bg-muted/50 p-4">
             {analytics && (
               <div className="mb-4 space-y-3">
                 <div className="flex flex-wrap gap-4 text-sm">
-                  <span className="text-slate-600">
+                  <span className="text-muted-foreground">
                     Occupancy:{' '}
-                    <span className="font-semibold text-slate-900">
+                    <span className="font-semibold text-foreground">
                       {analytics.occupancyRate.toFixed(1)}%
                     </span>
                   </span>
-                  <span className="text-slate-600">
+                  <span className="text-muted-foreground">
                     Waitlist:{' '}
-                    <span className="font-semibold text-slate-900">{analytics.waitlistCount}</span>
+                    <span className="font-semibold text-foreground">{analytics.waitlistCount}</span>
                   </span>
-                  <span className="text-slate-600">
+                  <span className="text-muted-foreground">
                     Avg rating:{' '}
-                    <span className="font-semibold text-slate-900">
+                    <span className="font-semibold text-foreground">
                       {analytics.averageRating > 0
                         ? `${analytics.averageRating.toFixed(1)} ★`
                         : 'No reviews'}
                     </span>
                   </span>
-                  <span className="text-slate-600">
+                  <span className="text-muted-foreground">
                     Revenue:{' '}
-                    <span className="font-semibold text-slate-900">
+                    <span className="font-semibold text-foreground">
                       {formatCurrency(analytics.totalRevenue)}
                     </span>
                   </span>
                 </div>
                 {trendData.length > 0 && (
                   <div>
-                    <p className="mb-1 text-xs font-medium text-slate-500">
+                    <p className="mb-1 text-xs font-medium text-muted-foreground">
                       Daily bookings (last 30 days)
                     </p>
                     <ResponsiveContainer width="100%" height={120}>
@@ -223,13 +223,22 @@ export function OrganizerDashboardPage() {
   if (isPending) return <LoadingSpinner />
   if (error || !dashboard) {
     return (
-      <div className="container mx-auto max-w-5xl px-4 py-16 text-center text-slate-500">
+      <div className="container mx-auto max-w-5xl px-4 py-16 text-center text-muted-foreground">
         Failed to load dashboard.
       </div>
     )
   }
 
-  const chartData = dashboard.upcomingEvents.slice(0, 8).map((ev) => ({
+  const draftEvents = [
+    ...dashboard.upcomingEvents,
+    ...dashboard.recentEvents,
+  ].filter((ev) => ev.displayStatus === 'Draft')
+
+  const nonDraftUpcoming = dashboard.upcomingEvents.filter(
+    (ev) => ev.displayStatus !== 'Draft'
+  )
+
+  const chartData = nonDraftUpcoming.slice(0, 8).map((ev) => ({
     name: ev.title.length > 16 ? ev.title.slice(0, 16) + '…' : ev.title,
     bookings: ev.confirmedBookings,
     capacity: ev.capacity,
@@ -238,7 +247,7 @@ export function OrganizerDashboardPage() {
   return (
     <div className="container mx-auto max-w-5xl px-4 py-8">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">Organizer Dashboard</h1>
+        <h1 className="text-2xl font-bold text-foreground">Organizer Dashboard</h1>
         <div className="flex gap-2">
           <Dialog open={profileOpen} onOpenChange={setProfileOpen}>
             <DialogTrigger asChild>
@@ -323,8 +332,8 @@ export function OrganizerDashboardPage() {
 
       {/* Chart */}
       {chartData.length > 0 && (
-        <div className="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="mb-4 text-sm font-semibold text-slate-700">
+        <div className="mb-6 rounded-xl border border-border bg-card p-5 shadow-sm">
+          <h2 className="mb-4 text-sm font-semibold text-foreground">
             Upcoming Events — Bookings vs Capacity
           </h2>
           <ResponsiveContainer width="100%" height={220}>
@@ -341,10 +350,15 @@ export function OrganizerDashboardPage() {
       )}
 
       {/* Tabs */}
-      <Tabs defaultValue="upcoming">
+      <Tabs defaultValue={draftEvents.length > 0 ? 'drafts' : 'upcoming'}>
         <TabsList className="mb-4">
+          {draftEvents.length > 0 && (
+            <TabsTrigger value="drafts">
+              Drafts ({draftEvents.length})
+            </TabsTrigger>
+          )}
           <TabsTrigger value="upcoming">
-            Upcoming ({dashboard.upcomingEvents.length})
+            Upcoming ({nonDraftUpcoming.length})
           </TabsTrigger>
           <TabsTrigger value="recent">
             Recent ({dashboard.recentEvents.length})
@@ -354,10 +368,53 @@ export function OrganizerDashboardPage() {
           </TabsTrigger>
         </TabsList>
 
+        {draftEvents.length > 0 && (
+          <TabsContent value="drafts">
+            <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Event</TableHead>
+                    <TableHead>Start Date</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {draftEvents.map((ev) => (
+                    <TableRow key={ev.eventId}>
+                      <TableCell className="font-medium text-foreground">
+                        {ev.title}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {formatDate(ev.startDate)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Link to={`/events/${ev.eventId}/edit`}>
+                            <Button size="sm" variant="outline" className="gap-1.5">
+                              <Pencil className="h-3.5 w-3.5" />
+                              Edit
+                            </Button>
+                          </Link>
+                          <Link to={`/events/${ev.eventId}`}>
+                            <Button size="sm" variant="ghost">
+                              View
+                            </Button>
+                          </Link>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </TabsContent>
+        )}
+
         <TabsContent value="upcoming">
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-            {dashboard.upcomingEvents.length === 0 ? (
-              <p className="py-10 text-center text-slate-500">No upcoming events.</p>
+          <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+            {nonDraftUpcoming.length === 0 ? (
+              <p className="py-10 text-center text-muted-foreground">No upcoming events.</p>
             ) : (
               <Table>
                 <TableHeader>
@@ -371,7 +428,7 @@ export function OrganizerDashboardPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {dashboard.upcomingEvents.map((ev) => (
+                  {nonDraftUpcoming.map((ev) => (
                     <ExpandableEventRow key={ev.eventId} event={ev} />
                   ))}
                 </TableBody>
@@ -381,9 +438,9 @@ export function OrganizerDashboardPage() {
         </TabsContent>
 
         <TabsContent value="recent">
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
             {dashboard.recentEvents.length === 0 ? (
-              <p className="py-10 text-center text-slate-500">No recent events.</p>
+              <p className="py-10 text-center text-muted-foreground">No recent events.</p>
             ) : (
               <Table>
                 <TableHeader>
@@ -407,9 +464,9 @@ export function OrganizerDashboardPage() {
         </TabsContent>
 
         <TabsContent value="subscribers">
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
             {subscribers.length === 0 ? (
-              <p className="py-10 text-center text-slate-500">No subscribers yet.</p>
+              <p className="py-10 text-center text-muted-foreground">No subscribers yet.</p>
             ) : (
               <Table>
                 <TableHeader>

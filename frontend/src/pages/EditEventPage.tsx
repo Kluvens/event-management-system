@@ -20,7 +20,7 @@ export function EditEventPage() {
   if (isPending) return <LoadingSpinner />
   if (!event) {
     return (
-      <div className="container mx-auto max-w-2xl px-4 py-16 text-center text-slate-500">
+      <div className="container mx-auto max-w-2xl px-4 py-16 text-center text-muted-foreground">
         Event not found.
       </div>
     )
@@ -29,12 +29,12 @@ export function EditEventPage() {
   return (
     <div className="container mx-auto max-w-2xl px-4 py-8">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Edit Event</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <h1 className="text-2xl font-bold text-foreground">Edit Event</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Changes to a published event are visible immediately.
         </p>
       </div>
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
         <EventForm
           defaultValues={event}
           onSubmit={handleSubmit}

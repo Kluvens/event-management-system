@@ -1,8 +1,8 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useQuery } from '@tanstack/react-query'
-import { MapPin, ChevronRight, Navigation } from 'lucide-react'
-import { useEvents, eventsApi } from '@/api/events'
+import { MapPin, ChevronRight, Navigation, Loader2 } from 'lucide-react'
+import { useInfiniteEvents, eventsApi } from '@/api/events'
 import { EventCard } from '@/components/EventCard'
 import { EventFilters } from '@/components/EventFilters'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
@@ -13,6 +13,7 @@ import type { EventFilters as Filters } from '@/types'
 export function HomePage() {
   const [filters, setFilters] = useState<Filters>({})
   const allEventsRef = useRef<HTMLElement>(null)
+  const sentinelRef = useRef<HTMLDivElement>(null)
 
   const { city, loading: locationLoading, source } = useUserLocation()
 
@@ -23,7 +24,33 @@ export function HomePage() {
     enabled: city !== null,
   })
 
-  const { data: events = [], isPending, error } = useEvents(filters)
+  const {
+    data,
+    isPending,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+    error,
+  } = useInfiniteEvents(filters)
+
+  const events = data?.pages.flatMap((p) => p.items) ?? []
+  const totalCount = data?.pages[0]?.totalCount ?? 0
+
+  // Infinite scroll — trigger next page when sentinel enters viewport
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage()
+        }
+      },
+      { rootMargin: '200px' }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage])
 
   function scrollToAll() {
     allEventsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -35,7 +62,7 @@ export function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-background">
       {/* ── Hero ───────────────────────────────────────────────────────── */}
       <section className="relative overflow-hidden bg-slate-950 pb-10 pt-14 sm:pb-16 sm:pt-20">
         <Spotlight className="-top-40 left-0 md:-top-20 md:left-60" fill="white" />
@@ -83,13 +110,13 @@ export function HomePage() {
 
       {/* ── Nearby Events ──────────────────────────────────────────────── */}
       {!locationLoading && (
-        <section className="border-b border-slate-100 bg-slate-50 py-6 sm:py-8">
+        <section className="border-b border-border bg-muted/50 py-6 sm:py-8">
           <div className="container mx-auto max-w-7xl px-4">
             {/* Section header */}
             <div className="mb-4 flex items-center justify-between">
               <div className="flex items-center gap-1.5">
                 <MapPin className="h-4 w-4 text-indigo-500" />
-                <h2 className="text-sm font-semibold text-slate-800 sm:text-base">
+                <h2 className="text-sm font-semibold text-foreground sm:text-base">
                   Events near {city}
                 </h2>
                 {source === 'default' && (
@@ -112,7 +139,7 @@ export function HomePage() {
             {nearbyPending ? (
               <LoadingSpinner />
             ) : nearbyEvents.length === 0 ? (
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-muted-foreground">
                 No upcoming events found near {city}.
               </p>
             ) : (
@@ -136,7 +163,7 @@ export function HomePage() {
 
       {/* ── All Events ─────────────────────────────────────────────────── */}
       <section ref={allEventsRef} className="container mx-auto max-w-7xl px-4 py-6 sm:py-8">
-        <h2 className="mb-4 text-sm font-semibold text-slate-800 sm:text-base">
+        <h2 className="mb-4 text-sm font-semibold text-foreground sm:text-base">
           All Events
         </h2>
 
@@ -145,24 +172,24 @@ export function HomePage() {
         </div>
 
         {!isPending && (
-          <p className="mb-4 text-xs text-slate-500 sm:text-sm">
-            {events.length === 0
+          <p className="mb-4 text-xs text-muted-foreground sm:text-sm">
+            {totalCount === 0
               ? 'No events found.'
-              : `${events.length} event${events.length !== 1 ? 's' : ''} found`}
+              : `${totalCount} event${totalCount !== 1 ? 's' : ''} found`}
           </p>
         )}
 
         {isPending ? (
           <LoadingSpinner />
         ) : error ? (
-          <div className="py-16 text-center text-slate-500">
+          <div className="py-16 text-center text-muted-foreground">
             Failed to load events. Please try again.
           </div>
         ) : events.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="mb-4 rounded-full bg-slate-100 p-5">
+            <div className="mb-4 rounded-full bg-muted p-5">
               <svg
-                className="h-7 w-7 text-slate-400"
+                className="h-7 w-7 text-muted-foreground"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -175,31 +202,42 @@ export function HomePage() {
                 />
               </svg>
             </div>
-            <h3 className="mb-1 text-sm font-semibold text-slate-800 sm:text-base">
+            <h3 className="mb-1 text-sm font-semibold text-foreground sm:text-base">
               No events found
             </h3>
-            <p className="text-xs text-slate-500 sm:text-sm">
+            <p className="text-xs text-muted-foreground sm:text-sm">
               Try adjusting your filters or search terms.
             </p>
           </div>
         ) : (
-          <motion.div
-            className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.3 }}
-          >
-            {events.map((event, i) => (
-              <motion.div
-                key={event.id}
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.04, duration: 0.3 }}
-              >
-                <EventCard event={event} />
-              </motion.div>
-            ))}
-          </motion.div>
+          <>
+            <motion.div
+              className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3 }}
+            >
+              {events.map((event, i) => (
+                <motion.div
+                  key={event.id}
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: Math.min(i * 0.04, 0.4), duration: 0.3 }}
+                >
+                  <EventCard event={event} />
+                </motion.div>
+              ))}
+            </motion.div>
+
+            {/* Infinite scroll sentinel */}
+            <div ref={sentinelRef} className="mt-6" />
+
+            {isFetchingNextPage && (
+              <div className="flex justify-center py-4">
+                <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
+              </div>
+            )}
+          </>
         )}
       </section>
     </div>
