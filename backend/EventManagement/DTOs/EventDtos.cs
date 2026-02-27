@@ -51,7 +51,8 @@ public record EventResponse(
     int CategoryId,
     string CategoryName,
     List<string> Tags,
-    string? ImageUrl
+    string? ImageUrl,
+    string? InviteCode = null
 );
 
 public record PagedEventResponse(

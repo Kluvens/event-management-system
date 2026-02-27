@@ -86,7 +86,7 @@ public class EventsController(AppDbContext db, ICognitoUserResolver resolver)
         var items = await query
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(e => ToResponse(e))
+            .Select(e => ToResponse(e, null))
             .ToListAsync();
 
         return Ok(new PagedEventResponse(items, total, page * pageSize < total));
@@ -95,7 +95,7 @@ public class EventsController(AppDbContext db, ICognitoUserResolver resolver)
     // ── Single ─────────────────────────────────────────────────────
 
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetById(int id)
+    public async Task<IActionResult> GetById(int id, [FromQuery] string? code = null)
     {
         int? userId = GetCurrentSub() is not null ? await GetCurrentUserIdAsync() : null;
         var role         = GetCurrentRole();
@@ -111,11 +111,53 @@ public class EventsController(AppDbContext db, ICognitoUserResolver resolver)
 
         if (ev is null) return NotFound();
         if (ev.IsSuspended && !isSuperAdmin) return NotFound();
-        if (!ev.IsPublic && ev.CreatedById != userId && !isAdmin && !isSuperAdmin) return NotFound();
-        if (ev.Status == StatusDraft && ev.CreatedById != userId && !isAdmin && !isSuperAdmin) return NotFound();
-        if (ev.Status == StatusCancelled && ev.CreatedById != userId && !isAdmin && !isSuperAdmin) return NotFound();
 
-        return Ok(ToResponse(ev));
+        var hasValidCode = !string.IsNullOrEmpty(code)
+                           && !string.IsNullOrEmpty(ev.InviteCode)
+                           && code == ev.InviteCode;
+
+        if (!ev.IsPublic && ev.CreatedById != userId && !isAdmin && !isSuperAdmin && !hasValidCode)
+            return NotFound();
+        if (ev.Status == StatusDraft && ev.CreatedById != userId && !isAdmin && !isSuperAdmin)
+            return NotFound();
+        if (ev.Status == StatusCancelled && ev.CreatedById != userId && !isAdmin && !isSuperAdmin)
+            return NotFound();
+
+        // Only expose the invite code to the event owner
+        var ownerInviteCode = (userId.HasValue && ev.CreatedById == userId.Value) ? ev.InviteCode : null;
+        return Ok(ToResponse(ev, ownerInviteCode));
+    }
+
+    // ── Invite code ────────────────────────────────────────────────
+
+    /// <summary>Generate (or regenerate) an invite code for a private event.</summary>
+    [Authorize]
+    [HttpPost("{id}/invite-code")]
+    public async Task<IActionResult> GenerateInviteCode(int id)
+    {
+        var userId = await GetCurrentUserIdAsync();
+        var ev = await db.Events.FindAsync(id);
+        if (ev is null) return NotFound();
+        if (ev.CreatedById != userId) return Forbid();
+
+        ev.InviteCode = Guid.NewGuid().ToString("N"); // 32-char hex, no hyphens
+        await db.SaveChangesAsync();
+        return Ok(new { inviteCode = ev.InviteCode });
+    }
+
+    /// <summary>Revoke the invite code for a private event.</summary>
+    [Authorize]
+    [HttpDelete("{id}/invite-code")]
+    public async Task<IActionResult> RevokeInviteCode(int id)
+    {
+        var userId = await GetCurrentUserIdAsync();
+        var ev = await db.Events.FindAsync(id);
+        if (ev is null) return NotFound();
+        if (ev.CreatedById != userId) return Forbid();
+
+        ev.InviteCode = null;
+        await db.SaveChangesAsync();
+        return NoContent();
     }
 
     // ── Stats (host / admin) ───────────────────────────────────────
@@ -567,7 +609,7 @@ public class EventsController(AppDbContext db, ICognitoUserResolver resolver)
         return "Published";
     }
 
-    internal static EventResponse ToResponse(Event e)
+    internal static EventResponse ToResponse(Event e, string? inviteCode = null)
     {
         var confirmed = e.Bookings.Count(b => b.Status == StatusConfirmed);
         return new EventResponse(
@@ -580,6 +622,7 @@ public class EventsController(AppDbContext db, ICognitoUserResolver resolver)
             e.CreatedAt, e.CreatedById, e.CreatedBy.Name,
             e.CategoryId, e.Category.Name,
             e.EventTags.Select(et => et.Tag.Name).ToList(),
-            e.ImageUrl);
+            e.ImageUrl,
+            inviteCode);
     }
 }

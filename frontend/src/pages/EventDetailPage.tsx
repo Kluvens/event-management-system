@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import {
@@ -21,6 +21,9 @@ import {
   Bus,
   Bike,
   Footprints,
+  Link2,
+  Copy,
+  RotateCcw,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -54,6 +57,8 @@ import {
   useDeleteEvent,
   useAnnouncements,
   usePostAnnouncement,
+  useGenerateInviteCode,
+  useRevokeInviteCode,
 } from '@/api/events'
 import { useMineBookings, useCreateBooking, useCancelBooking } from '@/api/bookings'
 import { useWaitlistPosition, useJoinWaitlist, useLeaveWaitlist } from '@/api/waitlist'
@@ -80,14 +85,18 @@ import {
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { toast } from 'sonner'
+import { StarRating } from '@/components/StarRating'
 
 export function EventDetailPage() {
   const { id } = useParams<{ id: string }>()
   const eventId = parseInt(id ?? '0')
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const inviteCodeParam = searchParams.get('code') ?? undefined
   const { user, isAdmin } = useAuthStore()
 
-  const { data: event, isPending, error } = useEvent(eventId)
+  const { data: event, isPending, error } = useEvent(eventId, inviteCodeParam)
   const { data: announcements = [] } = useAnnouncements(eventId)
   const { data: reviews = [] } = useReviews(eventId)
   const { data: myBookings = [] } = useMineBookings()
@@ -118,6 +127,8 @@ export function EventDetailPage() {
   const { data: waitlistPos } = useWaitlistPosition(eventId)
   const joinWaitlist = useJoinWaitlist(eventId)
   const leaveWaitlist = useLeaveWaitlist(eventId)
+  const generateInviteCode = useGenerateInviteCode(eventId)
+  const revokeInviteCode = useRevokeInviteCode(eventId)
 
   const [cancelBookingConfirm, setCancelBookingConfirm] = useState(false)
   const [cancelEventConfirm, setCancelEventConfirm] = useState(false)
@@ -314,6 +325,74 @@ export function EventDetailPage() {
             </Button>
           )}
         </div>
+
+        {/* Invite link — private events, owner only */}
+        {isOwner && !event.isPublic && (
+          <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950/30">
+            <div className="mb-2 flex items-center gap-1.5 text-sm font-medium text-amber-800 dark:text-amber-300">
+              <Link2 className="h-4 w-4" />
+              Private Event — Invite Link
+            </div>
+            {event.inviteCode ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 truncate rounded bg-white px-2 py-1 text-xs text-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                    {`${window.location.origin}/events/${event.id}?code=${event.inviteCode}`}
+                  </code>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="shrink-0"
+                    onClick={() => {
+                      navigator.clipboard.writeText(
+                        `${window.location.origin}/events/${event.id}?code=${event.inviteCode}`
+                      )
+                      toast.success('Invite link copied!')
+                    }}
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="shrink-0"
+                    title="Generate a new link (invalidates the current one)"
+                    onClick={() => generateInviteCode.mutate()}
+                    disabled={generateInviteCode.isPending}
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="shrink-0 text-red-600 hover:text-red-700"
+                    onClick={() => revokeInviteCode.mutate()}
+                    disabled={revokeInviteCode.isPending}
+                  >
+                    Revoke
+                  </Button>
+                </div>
+                <p className="text-xs text-amber-700 dark:text-amber-400">
+                  Anyone with this link can view and book this event.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                <p className="text-xs text-amber-700 dark:text-amber-400">
+                  No invite link yet. Generate one to share this private event.
+                </p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => generateInviteCode.mutate()}
+                  disabled={generateInviteCode.isPending}
+                >
+                  Generate Invite Link
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Booking action */}
         {!canManage && (
@@ -565,14 +644,10 @@ export function EventDetailPage() {
               >
                 <div className="flex items-center gap-3">
                   <Label className="text-sm">Rating</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={5}
-                    className="w-20"
-                    {...reviewForm.register('rating')}
+                  <StarRating
+                    value={reviewForm.watch('rating')}
+                    onChange={(v) => reviewForm.setValue('rating', v)}
                   />
-                  <span className="text-sm text-muted-foreground">/ 5</span>
                 </div>
                 <Textarea
                   placeholder="Share your experience…"

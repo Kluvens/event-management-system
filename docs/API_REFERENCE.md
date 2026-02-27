@@ -91,10 +91,38 @@ Each event object includes: `id`, `title`, `description`, `location`, `startDate
 
 ### `GET /api/events/{id}`
 
-Retrieve a single event by ID. Draft events return `404` for non-owners. Private events return `404` for non-owners.
+Retrieve a single event by ID. Draft events return `404` for non-owners. Private events return `404` for non-owners **unless** a valid invite code is provided via `?code=`.
+
+| Query param | Description |
+|---|---|
+| `code` | Optional invite code; grants view access to a private event |
+
+Response includes `inviteCode` (string or null) — populated **only for the event owner** so they can display the shareable link.
 
 **Response `200 OK`** — single event object.
 **Response `404 Not Found`**
+
+---
+
+### `POST /api/events/{id}/invite-code` `[Auth]`
+
+Generate (or regenerate) an invite code for a **private** event. Only the event owner can call this. Each call produces a new 32-character hex token, invalidating the previous one.
+
+**Response `200 OK`**
+```json
+{ "inviteCode": "a3f9b2c1..." }
+```
+**Response `403 Forbidden`** — not the owner.
+**Response `404 Not Found`**
+
+---
+
+### `DELETE /api/events/{id}/invite-code` `[Auth]`
+
+Revoke the invite code for a private event. The code is set to null and any existing share links immediately stop working.
+
+**Response `204 No Content`**
+**Response `403 Forbidden`**
 
 ---
 

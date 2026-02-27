@@ -35,6 +35,7 @@ export interface Event {
   categoryName: string
   tags: string[]
   imageUrl: string | null
+  inviteCode?: string | null
 }
 
 export interface EventStats {

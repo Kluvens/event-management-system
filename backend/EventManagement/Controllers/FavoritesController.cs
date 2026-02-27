@@ -30,7 +30,7 @@ public class FavoritesController(AppDbContext db, ICognitoUserResolver resolver)
             .Select(uf => uf.Event)
             .ToListAsync();
 
-        return Ok(events.Select(EventsController.ToResponse));
+        return Ok(events.Select(e => EventsController.ToResponse(e, null)));
     }
 
     // ── Get my saved event IDs (for fast heart-button state) ───────

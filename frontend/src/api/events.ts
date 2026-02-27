@@ -26,7 +26,13 @@ export const eventsApi = {
       })
       .then((r) => r.data),
 
-  get: (id: number) => api.get<Event>(`/events/${id}`).then((r) => r.data),
+  get: (id: number, code?: string) =>
+    api.get<Event>(`/events/${id}`, { params: code ? { code } : undefined }).then((r) => r.data),
+
+  generateInviteCode: (id: number) =>
+    api.post<{ inviteCode: string }>(`/events/${id}/invite-code`).then((r) => r.data),
+
+  revokeInviteCode: (id: number) => api.delete(`/events/${id}/invite-code`),
 
   stats: (id: number) =>
     api.get<EventStats>(`/events/${id}/stats`).then((r) => r.data),
@@ -81,11 +87,32 @@ export function useInfiniteEvents(filters?: EventFilters) {
   })
 }
 
-export function useEvent(id: number | undefined) {
+export function useEvent(id: number | undefined, code?: string) {
   return useQuery({
-    queryKey: ['events', id],
-    queryFn: () => eventsApi.get(id!),
+    queryKey: ['events', id, code],
+    queryFn: () => eventsApi.get(id!, code),
     enabled: id !== undefined && id > 0,
+  })
+}
+
+export function useGenerateInviteCode(eventId: number) {
+  return useMutation({
+    mutationFn: () => eventsApi.generateInviteCode(eventId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['events', eventId] })
+    },
+    onError: () => toast.error('Failed to generate invite link.'),
+  })
+}
+
+export function useRevokeInviteCode(eventId: number) {
+  return useMutation({
+    mutationFn: () => eventsApi.revokeInviteCode(eventId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['events', eventId] })
+      toast.success('Invite link revoked.')
+    },
+    onError: () => toast.error('Failed to revoke invite link.'),
   })
 }
 

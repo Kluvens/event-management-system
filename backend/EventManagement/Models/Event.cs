@@ -18,6 +18,8 @@ public class Event
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public string? ImageUrl { get; set; }
+    /// <summary>Opaque token that grants view access to private events when passed as ?code=</summary>
+    public string? InviteCode { get; set; }
 
     public int CreatedById { get; set; }
     public User CreatedBy { get; set; } = null!;
