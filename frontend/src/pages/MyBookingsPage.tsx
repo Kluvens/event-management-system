@@ -140,7 +140,7 @@ export function MyBookingsPage() {
         )}
 
         <div className="flex flex-wrap gap-2">
-          {!isPast && (
+          {!isPast && booking.status !== 'Cancelled' && (
             <>
               <Button
                 size="sm"
@@ -174,9 +174,11 @@ export function MyBookingsPage() {
               </Button>
             </>
           )}
-          {isPast && (
+          {(isPast || booking.status === 'Cancelled') && (
             <Button asChild size="sm" variant="outline">
-              <Link to={`/events/${booking.eventId}`}>View &amp; Review</Link>
+              <Link to={`/events/${booking.eventId}`}>
+                {booking.status === 'Cancelled' ? 'View Event' : 'View & Review'}
+              </Link>
             </Button>
           )}
         </div>

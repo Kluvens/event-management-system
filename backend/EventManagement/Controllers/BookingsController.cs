@@ -35,14 +35,30 @@ public class BookingsController(
             .Include(b => b.Event)
             .Where(b => b.UserId == userId)
             .OrderByDescending(b => b.BookedAt)
-            .Select(b => new BookingResponse(
-                b.Id, b.EventId, b.Event.Title, b.Event.Location,
-                b.Event.StartDate, b.Event.EndDate, b.Event.Price,
-                b.BookedAt, b.Status, b.PointsEarned,
-                b.IsCheckedIn, b.CheckedInAt, b.CheckInToken))
             .ToListAsync();
 
-        return Ok(bookings);
+        // Award loyalty points for completed events — points are intentionally deferred
+        // until after the event ends so a user cannot earn points, spend them in the store,
+        // then cancel the booking for a refund.
+        var now = DateTime.UtcNow;
+        var user = await db.Users.FindAsync(userId);
+        bool anyAwarded = false;
+        foreach (var b in bookings)
+        {
+            if (b.Status == StatusConfirmed && !b.ArePointsAwarded && b.Event.EndDate < now)
+            {
+                user!.LoyaltyPoints += b.PointsEarned;
+                b.ArePointsAwarded = true;
+                anyAwarded = true;
+            }
+        }
+        if (anyAwarded) await db.SaveChangesAsync();
+
+        return Ok(bookings.Select(b => new BookingResponse(
+            b.Id, b.EventId, b.Event.Title, b.Event.Location,
+            b.Event.StartDate, b.Event.EndDate, b.Event.Price,
+            b.BookedAt, b.Status, b.PointsEarned,
+            b.IsCheckedIn, b.CheckedInAt, b.CheckInToken)));
     }
 
     // ── Book ───────────────────────────────────────────────────────
@@ -77,44 +93,26 @@ public class BookingsController(
         var discountedPrice = ev.Price * (1 - user.LoyaltyDiscount);
         var pointsEarned = (int)(discountedPrice * 10);
 
-        var existing = await db.Bookings
-            .FirstOrDefaultAsync(b => b.UserId == userId && b.EventId == req.EventId);
+        // A confirmed booking already exists — block duplicate
+        var existingConfirmed = await db.Bookings
+            .AnyAsync(b => b.UserId == userId && b.EventId == req.EventId && b.Status == StatusConfirmed);
+        if (existingConfirmed)
+            return Conflict(new { message = "You already have a booking for this event." });
 
-        if (existing is not null)
-        {
-            if (existing.Status == StatusConfirmed)
-                return Conflict(new { message = "You already have a booking for this event." });
-
-            // Re-activate a cancelled booking
-            existing.Status       = StatusConfirmed;
-            existing.BookedAt     = DateTime.UtcNow;
-            existing.PointsEarned = pointsEarned;
-            existing.CheckInToken ??= Guid.NewGuid().ToString();
-            user.LoyaltyPoints += pointsEarned;
-
-            db.Notifications.Add(new Notification
-            {
-                UserId  = userId,
-                Type    = "BookingConfirmation",
-                Title   = "Booking confirmed!",
-                Message = $"You're going to \"{ev.Title}\" on {ev.StartDate:MMM d, yyyy}. You earned {pointsEarned} loyalty points.",
-                EventId = ev.Id,
-            });
-
-            await db.SaveChangesAsync();
-            metrics.BookingCreated(ev.Id, userId, ev.Price);
-            return Ok(ToResponse(existing, ev));
-        }
-
+        // Cancelled bookings are final. A re-book creates a fresh record so
+        // the history of each booking remains distinct and unambiguous.
         var booking = new Booking
         {
             UserId       = userId,
             EventId      = req.EventId,
             PointsEarned = pointsEarned,
             CheckInToken = Guid.NewGuid().ToString()
+            // ArePointsAwarded stays false — points credited after event completes
         };
 
-        user.LoyaltyPoints += pointsEarned;
+        // Points are NOT awarded at booking time. They are credited lazily in
+        // GetMyBookings once the event's EndDate has passed, preventing the
+        // earn-spend-cancel refund loop.
         db.Bookings.Add(booking);
 
         db.Notifications.Add(new Notification
@@ -122,7 +120,7 @@ public class BookingsController(
             UserId  = userId,
             Type    = "BookingConfirmation",
             Title   = "Booking confirmed!",
-            Message = $"You're going to \"{ev.Title}\" on {ev.StartDate:MMM d, yyyy}. You earned {pointsEarned} loyalty points.",
+            Message = $"You're going to \"{ev.Title}\" on {ev.StartDate:MMM d, yyyy}. You'll earn {pointsEarned} loyalty points once the event concludes.",
             EventId = ev.Id,
         });
 
@@ -155,10 +153,16 @@ public class BookingsController(
 
         booking.Status = StatusCancelled;
 
-        // Deduct loyalty points earned from this booking
+        // Only claw back points if they were already credited (i.e. the event had completed
+        // and GetMyBookings had awarded them). If the event hasn't finished yet, points were
+        // never credited, so there is nothing to deduct.
         var user = await db.Users.FindAsync(userId);
-        user!.LoyaltyPoints = Math.Max(0, user.LoyaltyPoints - booking.PointsEarned);
-        booking.PointsEarned = 0;
+        if (booking.ArePointsAwarded)
+        {
+            user!.LoyaltyPoints = Math.Max(0, user.LoyaltyPoints - booking.PointsEarned);
+            booking.PointsEarned = 0;
+            booking.ArePointsAwarded = false;
+        }
 
         await db.SaveChangesAsync();
         await waitlist.PromoteNextAsync(booking.EventId);
@@ -191,8 +195,12 @@ public class BookingsController(
         foreach (var b in bookings)
         {
             b.Status = StatusCancelled;
-            user!.LoyaltyPoints = Math.Max(0, user.LoyaltyPoints - b.PointsEarned);
-            b.PointsEarned = 0;
+            if (b.ArePointsAwarded)
+            {
+                user!.LoyaltyPoints = Math.Max(0, user.LoyaltyPoints - b.PointsEarned);
+                b.PointsEarned = 0;
+                b.ArePointsAwarded = false;
+            }
         }
 
         await db.SaveChangesAsync();
