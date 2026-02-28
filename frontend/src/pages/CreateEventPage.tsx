@@ -9,7 +9,8 @@ export function CreateEventPage() {
 
   async function handleSubmit(data: CreateEventRequest) {
     const event = await createEvent.mutateAsync(data)
-    navigate(`/events/${event.id}`)
+    // Drafts go to the edit page so the user can keep refining; published events go to the detail page
+    navigate(data.publish ? `/events/${event.id}` : `/events/${event.id}/edit`)
   }
 
   return (

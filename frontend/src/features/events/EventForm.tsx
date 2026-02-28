@@ -56,6 +56,8 @@ interface Props {
   isLoading?: boolean
   submitLabel?: string
   showPublishButton?: boolean
+  /** Label for the left (save-without-publish) button when showPublishButton is true */
+  draftLabel?: string
 }
 
 export function EventForm({
@@ -64,6 +66,7 @@ export function EventForm({
   isLoading,
   submitLabel = 'Save',
   showPublishButton = false,
+  draftLabel,
 }: Props) {
   const { data: categories = [] } = useCategories()
   const { data: tags = [] } = useTags()
@@ -96,7 +99,9 @@ export function EventForm({
       categoryId: defaultValues?.categoryId ?? 0,
       tagIds: [],
       imageUrl: defaultValues?.imageUrl ?? null,
-      termsAccepted: undefined as unknown as true,
+      // In edit mode the user already accepted terms at creation time — default to true so
+      // validation passes without requiring them to tick the box again.
+      termsAccepted: defaultValues ? true : (undefined as unknown as true),
     },
   })
 
@@ -401,8 +406,8 @@ export function EventForm({
         />
       </div>
 
-      {/* Terms & Conditions */}
-      <div className="rounded-lg border border-border bg-muted/40 p-4 space-y-3">
+      {/* Terms & Conditions — only shown when creating; in edit mode terms were already accepted */}
+      {!defaultValues && <div className="rounded-lg border border-border bg-muted/40 p-4 space-y-3">
         <p className="text-sm font-medium text-foreground">Terms &amp; Conditions</p>
         <div className="text-xs text-muted-foreground space-y-1.5">
           <p>By creating this event you agree to:</p>
@@ -434,7 +439,7 @@ export function EventForm({
         {errors.termsAccepted && (
           <p className="text-xs text-red-500">{errors.termsAccepted.message}</p>
         )}
-      </div>
+      </div>}
 
       {/* Submit buttons */}
       {showPublishButton ? (
@@ -446,7 +451,7 @@ export function EventForm({
             disabled={isLoading || isUploading}
             onClick={() => { publishIntentRef.current = false }}
           >
-            {isLoading && !publishIntentRef.current ? 'Saving…' : 'Save as Draft'}
+            {isLoading && !publishIntentRef.current ? 'Saving…' : (draftLabel ?? 'Save as Draft')}
           </Button>
           <Button
             type="submit"
