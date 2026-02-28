@@ -12,10 +12,12 @@ import { Toaster } from 'sonner'
 
 export default function App() {
   const setUser = useAuthStore((s) => s.setUser)
+  const setHydrated = useAuthStore((s) => s.setHydrated)
 
   // Re-hydrate the user profile on every page load.
   // Amplify persists the Cognito session in localStorage; we just need to
   // fetch the app-specific profile (role, loyalty points, etc.) from our backend.
+  // setHydrated() is always called so ProtectedRoute knows when it's safe to redirect.
   useEffect(() => {
     fetchAuthSession()
       .then((session) => {
@@ -29,7 +31,10 @@ export default function App() {
       .catch(() => {
         // No active Cognito session — user stays logged out
       })
-  }, [setUser])
+      .finally(() => {
+        setHydrated()
+      })
+  }, [setUser, setHydrated])
 
   return (
     <ThemeProvider>

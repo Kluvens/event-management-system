@@ -17,7 +17,10 @@ export interface AppUser {
 
 interface AuthState {
   user:         AppUser | null
+  /** True while the initial Amplify session + profile fetch is in flight */
+  isHydrating:  boolean
   setUser:      (u: AppUser | null) => void
+  setHydrated:  () => void
   logout:       () => void
   isAdmin:      () => boolean
   isSuperAdmin: () => boolean
@@ -26,9 +29,11 @@ interface AuthState {
 // No persist middleware — Amplify owns token storage in localStorage.
 // The app profile is re-fetched from /api/auth/me on each app load (see App.tsx).
 export const useAuthStore = create<AuthState>()((set, get) => ({
-  user:    null,
-  setUser: (u) => set({ user: u }),
-  logout:  () => set({ user: null }),
+  user:        null,
+  isHydrating: true,
+  setUser:     (u) => set({ user: u }),
+  setHydrated: () => set({ isHydrating: false }),
+  logout:      () => set({ user: null }),
   isAdmin: () => {
     const role = get().user?.role
     return role === 'Admin' || role === 'SuperAdmin'
