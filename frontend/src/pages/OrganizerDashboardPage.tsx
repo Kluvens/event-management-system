@@ -437,10 +437,10 @@ export function OrganizerDashboardPage() {
   ]
 
   return (
-    <div className="flex min-h-[calc(100vh-56px)]">
+    <div className="flex h-[calc(100vh-56px)] overflow-hidden">
 
       {/* ── Sidebar ────────────────────────────────────────────────── */}
-      <aside className="w-52 shrink-0 bg-stone-900 flex flex-col py-6 sticky top-14 h-[calc(100vh-56px)] overflow-y-auto">
+      <aside className="w-52 shrink-0 flex flex-col py-6 overflow-y-auto bg-card border-r border-border">
 
         {/* Logo */}
         <div className="px-4 mb-6">
@@ -448,24 +448,24 @@ export function OrganizerDashboardPage() {
             <div className="h-8 w-8 rounded-lg bg-amber-500 flex items-center justify-center shrink-0">
               <Ticket className="h-4 w-4 text-white" />
             </div>
-            <span className="text-white font-bold text-lg">EventHub</span>
+            <span className="font-bold text-lg text-foreground">EventHub</span>
           </Link>
         </div>
 
         {/* User info */}
-        <div className="px-4 mb-6 pb-5 border-b border-stone-800">
+        <div className="px-4 mb-6 pb-5 border-b border-border">
           <div className="h-10 w-10 rounded-full bg-amber-500 flex items-center justify-center mb-2.5">
             <span className="text-white font-bold text-sm">
               {user?.name.charAt(0).toUpperCase()}
             </span>
           </div>
-          <p className="text-stone-100 font-semibold text-sm truncate">{user?.name}</p>
-          <p className="text-stone-400 text-xs truncate">{user?.email}</p>
+          <p className="font-semibold text-sm text-foreground truncate">{user?.name}</p>
+          <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
         </div>
 
         {/* Navigation */}
         <div className="px-3 flex-1">
-          <p className="px-1 mb-2 text-[10px] font-semibold uppercase tracking-wider text-stone-500">Menu</p>
+          <p className="px-1 mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Menu</p>
           <nav className="space-y-0.5">
             {navItems.map(({ key, icon: Icon, label, badge }) => (
               <button
@@ -474,7 +474,7 @@ export function OrganizerDashboardPage() {
                 className={`w-full flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium transition-colors
                   ${view === key
                     ? 'bg-amber-500 text-white'
-                    : 'text-stone-400 hover:bg-stone-800 hover:text-stone-100'
+                    : 'text-muted-foreground hover:bg-accent hover:text-foreground'
                   }`}
               >
                 <span className="flex items-center gap-2.5">
@@ -483,7 +483,7 @@ export function OrganizerDashboardPage() {
                 </span>
                 {badge != null && badge > 0 && (
                   <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none
-                    ${view === key ? 'bg-white/20 text-white' : 'bg-stone-700 text-stone-300'}`}>
+                    ${view === key ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'}`}>
                     {badge}
                   </span>
                 )}
@@ -491,12 +491,12 @@ export function OrganizerDashboardPage() {
             ))}
           </nav>
 
-          <p className="px-1 mt-6 mb-2 text-[10px] font-semibold uppercase tracking-wider text-stone-500">General</p>
+          <p className="px-1 mt-6 mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">General</p>
 
           {/* Profile settings (opens dialog) */}
           <Dialog open={profileOpen} onOpenChange={setProfileOpen}>
             <DialogTrigger asChild>
-              <button className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-stone-400 hover:bg-stone-800 hover:text-stone-100 transition-colors">
+              <button className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
                 <Settings className="h-4 w-4 shrink-0" />
                 Edit Profile
               </button>
@@ -534,7 +534,7 @@ export function OrganizerDashboardPage() {
         </div>
 
         {/* Create event CTA */}
-        <div className="px-3 mt-4 pt-4 border-t border-stone-800">
+        <div className="px-3 mt-4 pt-4 border-t border-border">
           <Link to="/events/create">
             <Button className="w-full bg-amber-500 hover:bg-amber-600 text-white rounded-xl">
               <Plus className="h-4 w-4 mr-1.5" />
