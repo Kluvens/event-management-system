@@ -79,13 +79,7 @@ public class StoreController(AppDbContext db, ICognitoUserResolver resolver)
         db.UserPurchases.Add(purchase);
         await db.SaveChangesAsync();
 
-        return Ok(new PurchaseProductResponse
-        {
-            PurchaseId      = purchase.Id,
-            ProductName     = product.Name,
-            PointsSpent     = product.PointCost,
-            RemainingPoints = user.LoyaltyPoints
-        });
+        return Ok(new PurchaseProductResponse(purchase.Id, product.Name, product.PointCost, user.LoyaltyPoints));
     }
 
     // ── My purchases ──────────────────────────────────────────────────
@@ -96,18 +90,14 @@ public class StoreController(AppDbContext db, ICognitoUserResolver resolver)
     {
         var userId = await GetCurrentUserIdAsync();
 
-        var purchases = await db.UserPurchases
+        var raw = await db.UserPurchases
             .Include(up => up.Product)
             .Where(up => up.UserId == userId)
             .OrderByDescending(up => up.PurchasedAt)
-            .Select(up => new UserPurchaseResponse
-            {
-                Id          = up.Id,
-                Product     = ToProductResponse(up.Product, true),
-                PurchasedAt = up.PurchasedAt,
-                PointsSpent = up.PointsSpent
-            })
             .ToListAsync();
+
+        var purchases = raw.Select(up =>
+            new UserPurchaseResponse(up.Id, ToProductResponse(up.Product, true), up.PurchasedAt, up.PointsSpent));
 
         return Ok(purchases);
     }
@@ -168,15 +158,6 @@ public class StoreController(AppDbContext db, ICognitoUserResolver resolver)
 
     // ── Helper ────────────────────────────────────────────────────────
 
-    private static StoreProductResponse ToProductResponse(StoreProduct p, bool alreadyOwned) => new()
-    {
-        Id           = p.Id,
-        Name         = p.Name,
-        Description  = p.Description,
-        PointCost    = p.PointCost,
-        Category     = p.Category,
-        ImageUrl     = p.ImageUrl,
-        IsActive     = p.IsActive,
-        AlreadyOwned = alreadyOwned
-    };
+    private static StoreProductResponse ToProductResponse(StoreProduct p, bool alreadyOwned) =>
+        new(p.Id, p.Name, p.Description, p.PointCost, p.Category, p.ImageUrl, p.IsActive, alreadyOwned);
 }
