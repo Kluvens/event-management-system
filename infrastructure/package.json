@@ -1,0 +1,22 @@
+{
+  "name": "event-hub-infrastructure",
+  "version": "1.0.0",
+  "description": "AWS CDK stack for EventHub: WAF, CloudWatch alarms, and dashboard",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "cdk": "cdk",
+    "deploy": "cdk deploy --all --require-approval never",
+    "diff": "cdk diff",
+    "synth": "cdk synth"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.170.0",
+    "constructs": "^10.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "aws-cdk": "^2.170.0",
+    "typescript": "^5.7.0"
+  }
+}

@@ -1,14 +1,22 @@
 using System.Security.Claims;
 using System.Threading.RateLimiting;
 using EventManagement.Data;
+using EventManagement.Middleware;
 using EventManagement.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// ── CloudWatch Logs ───────────────────────────────────────────────────────────
+// In production, ILogger output is shipped to CloudWatch via AWS.Logger.
+// In development the default console logger is used (no AWS calls made).
+builder.Logging.AddAWSProvider(builder.Configuration.GetAWSLoggingConfigSection());
 
 // Database
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -24,6 +32,15 @@ var cognitoIssuer   = $"https://cognito-idp.{cognitoRegion}.amazonaws.com/{cogni
 builder.Services.AddScoped<ICognitoUserResolver, CognitoUserResolver>();
 builder.Services.AddScoped<IWaitlistService, WaitlistService>();
 builder.Services.AddHostedService<NotificationBackgroundService>();
+
+// AppMetrics — structured log helper consumed by controllers
+builder.Services.AddSingleton<AppMetrics>();
+
+// ── Health checks ─────────────────────────────────────────────────────────────
+// /health/live  → always 200 (process is running)
+// /health/ready → 200 only when the database is reachable
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<AppDbContext>("database", tags: ["ready"]);
 
 // Storage: "Local" (default for dev) or "S3" (production)
 var storageProvider = builder.Configuration["Storage:Provider"] ?? "Local";
@@ -105,6 +122,18 @@ builder.Services.AddRateLimiter(options =>
     });
 
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    // Emit a structured log entry every time rate limiting rejects a request.
+    // CloudWatch Metric Filter pattern: [METRIC] EventName=RateLimitHit
+    options.OnRejected = async (ctx, token) =>
+    {
+        var metrics = ctx.HttpContext.RequestServices.GetRequiredService<AppMetrics>();
+        var endpoint = ctx.HttpContext.Request.Path.ToString();
+        var ip       = ctx.HttpContext.Connection.RemoteIpAddress?.ToString();
+        metrics.RateLimitHit(endpoint, ip);
+        ctx.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        await ctx.HttpContext.Response.WriteAsync("Too many requests. Please try again later.", token);
+    };
 });
 
 // CORS — allow React dev server
@@ -177,12 +206,41 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = string.Empty; // Serve Swagger UI at root "/"
 });
 
+// Security + observability middleware (before auth so headers are always added)
+app.UseMiddleware<SecurityHeadersMiddleware>();
+app.UseMiddleware<RequestCorrelationMiddleware>();
+
 app.UseStaticFiles();
 app.UseCors();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
+// Health check endpoints — excluded from auth + rate limiting
+app.MapHealthChecks("/health/live", new HealthCheckOptions
+{
+    // Liveness: always 200 as long as the process responds
+    Predicate = _ => false,
+    ResultStatusCodes =
+    {
+        [HealthStatus.Healthy]   = StatusCodes.Status200OK,
+        [HealthStatus.Degraded]  = StatusCodes.Status200OK,
+        [HealthStatus.Unhealthy] = StatusCodes.Status200OK,
+    },
+});
+
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    // Readiness: only passes when the database check succeeds
+    Predicate = check => check.Tags.Contains("ready"),
+    ResultStatusCodes =
+    {
+        [HealthStatus.Healthy]   = StatusCodes.Status200OK,
+        [HealthStatus.Degraded]  = StatusCodes.Status200OK,
+        [HealthStatus.Unhealthy] = StatusCodes.Status503ServiceUnavailable,
+    },
+});
 
 app.Run();
 

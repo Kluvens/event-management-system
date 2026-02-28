@@ -13,7 +13,11 @@ namespace EventManagement.Controllers;
 [Route("api/bookings")]
 [Authorize]
 [EnableRateLimiting("booking")]
-public class BookingsController(AppDbContext db, ICognitoUserResolver resolver, IWaitlistService waitlist)
+public class BookingsController(
+    AppDbContext db,
+    ICognitoUserResolver resolver,
+    IWaitlistService waitlist,
+    AppMetrics metrics)
     : AppControllerBase(resolver)
 {
     private const string StatusConfirmed = "Confirmed";
@@ -52,19 +56,19 @@ public class BookingsController(AppDbContext db, ICognitoUserResolver resolver, 
             .Include(e => e.Bookings)
             .FirstOrDefaultAsync(e => e.Id == req.EventId);
 
-        if (ev is null) return NotFound(new { message = "Event not found." });
+        if (ev is null) { metrics.BookingFailed(req.EventId, userId, "EventNotFound"); return NotFound(new { message = "Event not found." }); }
         if (ev.IsSuspended)
-            return BadRequest(new { message = "This event is currently unavailable." });
+            { metrics.BookingFailed(ev.Id, userId, "EventSuspended"); return BadRequest(new { message = "This event is currently unavailable." }); }
         if (ev.Status == StatusDraft)
-            return BadRequest(new { message = "Cannot book a draft event." });
+            { metrics.BookingFailed(ev.Id, userId, "EventDraft"); return BadRequest(new { message = "Cannot book a draft event." }); }
         if (ev.Status == StatusCancelled)
-            return BadRequest(new { message = "Event has been cancelled." });
+            { metrics.BookingFailed(ev.Id, userId, "EventCancelled"); return BadRequest(new { message = "Event has been cancelled." }); }
         if (ev.StartDate <= DateTime.UtcNow)
-            return BadRequest(new { message = "Ticket sales are closed — this event has already started." });
+            { metrics.BookingFailed(ev.Id, userId, "SalesEnded"); return BadRequest(new { message = "Ticket sales are closed — this event has already started." }); }
 
         var confirmedCount = ev.Bookings.Count(b => b.Status == StatusConfirmed);
         if (confirmedCount >= ev.Capacity)
-            return BadRequest(new { message = "Event is fully booked." });
+            { metrics.BookingFailed(ev.Id, userId, "EventFullyBooked"); return BadRequest(new { message = "Event is fully booked." }); }
 
         var user = await db.Users.FindAsync(userId);
         if (user!.IsSuspended)
@@ -98,7 +102,7 @@ public class BookingsController(AppDbContext db, ICognitoUserResolver resolver, 
             });
 
             await db.SaveChangesAsync();
-
+            metrics.BookingCreated(ev.Id, userId, ev.Price);
             return Ok(ToResponse(existing, ev));
         }
 
@@ -123,7 +127,7 @@ public class BookingsController(AppDbContext db, ICognitoUserResolver resolver, 
         });
 
         await db.SaveChangesAsync();
-
+        metrics.BookingCreated(ev.Id, userId, ev.Price);
         return CreatedAtAction(nameof(GetMyBookings), ToResponse(booking, ev));
     }
 

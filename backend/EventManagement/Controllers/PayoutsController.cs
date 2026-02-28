@@ -13,7 +13,7 @@ namespace EventManagement.Controllers;
 [Route("api/payouts")]
 [Authorize]
 [EnableRateLimiting("api")]
-public class PayoutsController(AppDbContext db, ICognitoUserResolver resolver)
+public class PayoutsController(AppDbContext db, ICognitoUserResolver resolver, AppMetrics metrics)
     : AppControllerBase(resolver)
 {
     // ── Organiser: list my payout requests ────────────────────────
@@ -63,6 +63,7 @@ public class PayoutsController(AppDbContext db, ICognitoUserResolver resolver)
 
         db.PayoutRequests.Add(payout);
         await db.SaveChangesAsync();
+        metrics.PayoutRequested(userId, req.Amount);
 
         return CreatedAtAction(nameof(GetMine), new PayoutRequestResponse(
             payout.Id, payout.Amount, payout.BankDetails, payout.Status,
@@ -112,6 +113,7 @@ public class PayoutsController(AppDbContext db, ICognitoUserResolver resolver)
         payout.ProcessedAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync();
+        metrics.PayoutProcessed(id, req.Status, req.AdminNotes);
         return NoContent();
     }
 }
