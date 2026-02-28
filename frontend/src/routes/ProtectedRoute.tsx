@@ -11,10 +11,12 @@ export function ProtectedRoute({ allowedRoles }: Props) {
   const { user, isHydrating } = useAuthStore()
   const location = useLocation()
 
-  // Wait for the initial Amplify session restore before deciding to redirect.
-  // Without this, user is always null on first render and the route immediately
-  // redirects to /login even when there is a valid session.
-  if (isHydrating) {
+  // Only block on hydration when there is no cached user in localStorage.
+  // If the user profile was persisted, render the page immediately and let
+  // the background Amplify validation refresh it silently. This prevents a
+  // loading flash for returning users AND prevents a premature /login redirect
+  // caused by Cognito token-rotation conflicts on rapid page reloads.
+  if (isHydrating && !user) {
     return <LoadingSpinner />
   }
 

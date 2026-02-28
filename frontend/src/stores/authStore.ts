@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import type { UserRole } from '@/types'
 
 export interface AppUser {
@@ -26,17 +27,29 @@ interface AuthState {
   isSuperAdmin: () => boolean
 }
 
-// No persist middleware — Amplify owns token storage in localStorage.
-// The app profile is re-fetched from /api/auth/me on each app load (see App.tsx).
-export const useAuthStore = create<AuthState>()((set, get) => ({
-  user:        null,
-  isHydrating: true,
-  setUser:     (u) => set({ user: u }),
-  setHydrated: () => set({ isHydrating: false }),
-  logout:      () => set({ user: null }),
-  isAdmin: () => {
-    const role = get().user?.role
-    return role === 'Admin' || role === 'SuperAdmin'
-  },
-  isSuperAdmin: () => get().user?.role === 'SuperAdmin',
-}))
+// The user profile is persisted in localStorage so it's available immediately
+// on page load — even before the async Amplify session check completes.
+// isHydrating is intentionally NOT persisted: it always starts true so that
+// App.tsx validates the Cognito session on every load, silently refreshing
+// the cached profile in the background.
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set, get) => ({
+      user:        null,
+      isHydrating: true,
+      setUser:     (u) => set({ user: u }),
+      setHydrated: () => set({ isHydrating: false }),
+      logout:      () => set({ user: null }),
+      isAdmin: () => {
+        const role = get().user?.role
+        return role === 'Admin' || role === 'SuperAdmin'
+      },
+      isSuperAdmin: () => get().user?.role === 'SuperAdmin',
+    }),
+    {
+      name: 'event-hub-auth',
+      // Only persist the user profile — not the transient isHydrating flag
+      partialize: (state) => ({ user: state.user }),
+    }
+  )
+)

@@ -24,12 +24,21 @@ export default function App() {
         if (session.tokens?.idToken) {
           return fetchAppProfile()
         }
+        // No tokens — definitively not logged in
+        setUser(null)
       })
       .then((profile) => {
         if (profile) setUser(profile)
       })
-      .catch(() => {
-        // No active Cognito session — user stays logged out
+      .catch((err: unknown) => {
+        // Cognito-specific "no session" errors mean the user is genuinely logged out.
+        // Anything else (network blip, token-rotation conflict from rapid reloads) is
+        // transient — keep the cached localStorage profile so the user stays logged in.
+        const name = (err as { name?: string })?.name
+        const isDefinitelyLoggedOut =
+          name === 'UserUnAuthenticatedException' ||
+          name === 'NotAuthorizedException'
+        if (isDefinitelyLoggedOut) setUser(null)
       })
       .finally(() => {
         setHydrated()
