@@ -46,7 +46,10 @@ public record OrganizerEventStats(
     int ConfirmedBookings,
     int Capacity,
     decimal Revenue,
-    int CheckedIn
+    int CheckedIn,
+    string Location,
+    decimal Price,
+    string? ImageUrl
 );
 
 public record AttendeeInfo(

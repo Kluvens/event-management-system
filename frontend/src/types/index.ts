@@ -226,6 +226,9 @@ export interface DashboardEvent {
   capacity: number
   revenue: number
   checkedIn: number
+  location: string
+  price: number
+  imageUrl?: string
 }
 
 export interface OrganizerDashboard {

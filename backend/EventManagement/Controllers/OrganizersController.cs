@@ -222,6 +222,7 @@ public class OrganizersController(AppDbContext db, ICognitoUserResolver resolver
         return new OrganizerEventStats(
             e.Id, e.Title,
             ComputeDisplayStatus(e, confirmed),
-            e.StartDate, confirmed, e.Capacity, revenue, checkedIn);
+            e.StartDate, confirmed, e.Capacity, revenue, checkedIn,
+            e.Location, e.Price, e.ImageUrl);
     }
 }
