@@ -67,6 +67,7 @@ import { useSubscribers } from '@/api/subscriptions'
 import { useEventAnalytics } from '@/api/analytics'
 import { useMyPayouts, useCreatePayout } from '@/api/payouts'
 import { useAuthStore } from '@/stores/authStore'
+import { useTheme } from '@/contexts/ThemeContext'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import type { DashboardEvent, UpdateOrganizerProfileRequest } from '@/types'
 
@@ -272,6 +273,8 @@ function EventCalendar({ events }: { events: DashboardEvent[] }) {
 function ExpandableEventRow({ event }: { event: DashboardEvent }) {
   const [expanded, setExpanded] = useState(false)
   const { data: analytics } = useEventAnalytics(event.eventId, expanded)
+  const { theme } = useTheme()
+  const isDark = theme === 'dark'
 
   const trendData = (analytics?.dailyBookings ?? []).map((d) => ({
     date: d.date.slice(5),
@@ -330,10 +333,12 @@ function ExpandableEventRow({ event }: { event: DashboardEvent }) {
                     <p className="mb-1 text-xs font-medium text-muted-foreground">Daily bookings (last 30 days)</p>
                     <ResponsiveContainer width="100%" height={120}>
                       <LineChart data={trendData} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                        <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-                        <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
-                        <Tooltip />
+                        <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#292524' : '#f1f5f9'} />
+                        <XAxis dataKey="date" tick={{ fontSize: 10, fill: isDark ? '#a8a29e' : '#78716c' }} />
+                        <YAxis tick={{ fontSize: 10, fill: isDark ? '#a8a29e' : '#78716c' }} allowDecimals={false} />
+                        <Tooltip
+                          contentStyle={isDark ? { borderRadius: '10px', border: '1px solid #292524', backgroundColor: '#1c1917', color: '#e7e5e4', fontSize: 12 } : { borderRadius: '10px', fontSize: 12 }}
+                        />
                         <Line type="monotone" dataKey="bookings" stroke="#f59e0b" strokeWidth={2} dot={false} />
                       </LineChart>
                     </ResponsiveContainer>
@@ -357,6 +362,8 @@ export function OrganizerDashboardPage() {
   const [payoutOpen, setPayoutOpen] = useState(false)
 
   const user = useAuthStore((s) => s.user)
+  const { theme } = useTheme()
+  const isDark = theme === 'dark'
   const { data: dashboard, isPending, error } = useOrganizerDashboard()
   const { data: subscribers = [] } = useSubscribers()
   const { data: payouts = [] } = useMyPayouts()
@@ -420,9 +427,9 @@ export function OrganizerDashboardPage() {
   const confirmedNotChecked = Math.max(0, dashboard.totalAttendees - dashboard.totalCheckedIn)
   const available = Math.max(0, totalCapacity - dashboard.totalAttendees)
   const donutData = [
-    { name: 'Checked In', value: dashboard.totalCheckedIn, color: '#1c1917' },
-    { name: 'Confirmed',  value: confirmedNotChecked,       color: '#a8a29e' },
-    { name: 'Available',  value: available,                  color: '#e7e5e4' },
+    { name: 'Checked In', value: dashboard.totalCheckedIn, color: isDark ? '#f59e0b' : '#1c1917' },
+    { name: 'Confirmed',  value: confirmedNotChecked,       color: isDark ? '#78716c' : '#a8a29e' },
+    { name: 'Available',  value: available,                  color: isDark ? '#292524' : '#e7e5e4' },
   ].filter((d) => d.value > 0)
   const totalTickets = donutData.reduce((s, d) => s + d.value, 0)
   const fillRate = totalCapacity > 0
@@ -587,7 +594,7 @@ export function OrganizerDashboardPage() {
                   </div>
                   <ResponsiveContainer width="100%" height={200}>
                     <BarChart data={monthlyRevenue} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f4" vertical={false} />
+                      <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#292524' : '#f5f5f4'} vertical={false} />
                       <XAxis
                         dataKey="month"
                         tick={{ fontSize: 11, fill: '#a8a29e' }}
@@ -604,10 +611,13 @@ export function OrganizerDashboardPage() {
                       />
                       <Tooltip
                         formatter={(v: number) => [formatCurrency(v), 'Revenue']}
-                        contentStyle={{ borderRadius: '12px', border: '1px solid #e7e5e4', fontSize: 12 }}
-                        cursor={{ fill: '#f5f5f4' }}
+                        contentStyle={isDark
+                          ? { borderRadius: '12px', border: '1px solid #292524', backgroundColor: '#1c1917', color: '#e7e5e4', fontSize: 12 }
+                          : { borderRadius: '12px', border: '1px solid #e7e5e4', fontSize: 12 }
+                        }
+                        cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : '#f5f5f4' }}
                       />
-                      <Bar dataKey="revenue" fill="#1c1917" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="revenue" fill={isDark ? '#f59e0b' : '#1c1917'} radius={[6, 6, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
