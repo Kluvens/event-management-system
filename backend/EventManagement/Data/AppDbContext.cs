@@ -22,6 +22,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<StoreProduct> StoreProducts => Set<StoreProduct>();
     public DbSet<UserPurchase> UserPurchases => Set<UserPurchase>();
+    public DbSet<PayoutRequest> PayoutRequests => Set<PayoutRequest>();
 
     // SQLite stores DateTime without timezone info; this ensures all values are
     // read back as UTC so the JSON serializer emits a 'Z' suffix.
@@ -180,6 +181,17 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .HasOne(up => up.Product)
             .WithMany(p => p.Purchases)
             .HasForeignKey(up => up.ProductId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // ── PayoutRequests ─────────────────────────────────────────
+        modelBuilder.Entity<PayoutRequest>()
+            .Property(p => p.Amount)
+            .HasColumnType("decimal(18,2)");
+
+        modelBuilder.Entity<PayoutRequest>()
+            .HasOne(p => p.Organizer)
+            .WithMany()
+            .HasForeignKey(p => p.OrganizerId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // ── Seed data ──────────────────────────────────────────────

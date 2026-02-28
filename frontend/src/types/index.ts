@@ -381,6 +381,28 @@ export interface EventAnalytics {
   dailyBookings: DailyBookingCount[]
 }
 
+// ─── Payouts ──────────────────────────────────────────────────────────────────
+
+export interface PayoutRequest {
+  id: number
+  amount: number
+  bankDetails: string
+  status: 'Pending' | 'Approved' | 'Rejected'
+  adminNotes: string | null
+  requestedAt: string
+  processedAt: string | null
+}
+
+export interface AdminPayoutRequest extends PayoutRequest {
+  organizerId: number
+  organizerName: string
+}
+
+export interface CreatePayoutRequestRequest {
+  amount: number
+  bankDetails: string
+}
+
 // ─── Loyalty Store ────────────────────────────────────────────────────────────
 
 export type StoreCategory = 'Badge' | 'Cosmetic' | 'Feature' | 'Perk' | 'Collectible'

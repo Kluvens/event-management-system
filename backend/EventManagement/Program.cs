@@ -1,7 +1,9 @@
 using System.Security.Claims;
+using System.Threading.RateLimiting;
 using EventManagement.Data;
 using EventManagement.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -71,6 +73,39 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 builder.Services.AddControllers();
+
+// Rate limiting
+builder.Services.AddRateLimiter(options =>
+{
+    // Auth endpoints: 5 attempts per minute per IP (brute-force protection)
+    options.AddFixedWindowLimiter("auth", opt =>
+    {
+        opt.PermitLimit = 5;
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        opt.QueueLimit = 0;
+    });
+
+    // Booking endpoints: 20 per minute per IP
+    options.AddFixedWindowLimiter("booking", opt =>
+    {
+        opt.PermitLimit = 20;
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        opt.QueueLimit = 0;
+    });
+
+    // General API: 200 requests per minute per IP
+    options.AddFixedWindowLimiter("api", opt =>
+    {
+        opt.PermitLimit = 200;
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        opt.QueueLimit = 0;
+    });
+
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+});
 
 // CORS — allow React dev server
 builder.Services.AddCors(options =>
@@ -144,6 +179,7 @@ app.UseSwaggerUI(c =>
 
 app.UseStaticFiles();
 app.UseCors();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

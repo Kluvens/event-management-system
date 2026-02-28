@@ -92,6 +92,18 @@ export function RegisterForm() {
         {register_.isPending ? 'Creating account…' : 'Create Account'}
       </Button>
 
+      <p className="text-center text-xs text-slate-500">
+        By creating an account you agree to our{' '}
+        <Link to="/terms" target="_blank" className="text-amber-400 hover:underline">
+          Terms of Service
+        </Link>{' '}
+        and{' '}
+        <Link to="/privacy" target="_blank" className="text-amber-400 hover:underline">
+          Privacy Policy
+        </Link>
+        .
+      </p>
+
       <p className="text-center text-sm text-slate-400">
         Already have an account?{' '}
         <Link to="/login" className="font-medium text-amber-400 hover:text-amber-300">

@@ -1,4 +1,4 @@
-import { Outlet, useLocation } from 'react-router-dom'
+import { Outlet, useLocation, Link } from 'react-router-dom'
 import { useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Navbar } from '@/components/Navbar'
@@ -12,10 +12,10 @@ export function RootLayout() {
   }, [pathname])
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex min-h-screen flex-col bg-background">
       <Navbar />
       {/* On the home page the navbar is transparent over the hero, so no padding needed */}
-      <main className={isHome ? '' : 'pt-14'}>
+      <main className={`flex-1 ${isHome ? '' : 'pt-14'}`}>
         <motion.div
           key={pathname}
           initial={{ opacity: 0 }}
@@ -25,6 +25,16 @@ export function RootLayout() {
           <Outlet />
         </motion.div>
       </main>
+
+      <footer className="border-t border-border bg-background py-6">
+        <div className="container mx-auto flex flex-col items-center justify-between gap-3 px-4 text-xs text-muted-foreground sm:flex-row">
+          <span>© {new Date().getFullYear()} EventHub. All rights reserved.</span>
+          <div className="flex gap-4">
+            <Link to="/terms" className="hover:text-foreground hover:underline">Terms of Service</Link>
+            <Link to="/privacy" className="hover:text-foreground hover:underline">Privacy Policy</Link>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }

@@ -3,12 +3,14 @@ using EventManagement.DTOs;
 using EventManagement.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 namespace EventManagement.Controllers;
 
 [ApiController]
 [Route("api/auth")]
+[EnableRateLimiting("auth")]
 public class AuthController(AppDbContext db, ICognitoUserResolver resolver) : AppControllerBase(resolver)
 {
     /// <summary>

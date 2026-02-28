@@ -21,6 +21,8 @@ import { StorePage } from '@/pages/StorePage'
 import { ProfilePage } from '@/pages/ProfilePage'
 import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage'
 import { ResetPasswordPage } from '@/pages/ResetPasswordPage'
+import { TermsPage } from '@/pages/TermsPage'
+import { PrivacyPage } from '@/pages/PrivacyPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 
 export const router = createBrowserRouter([
@@ -53,6 +55,8 @@ export const router = createBrowserRouter([
         children: [{ path: 'admin', element: <AdminPage /> }],
       },
 
+      { path: 'terms', element: <TermsPage /> },
+      { path: 'privacy', element: <PrivacyPage /> },
       { path: '*', element: <NotFoundPage /> },
     ],
   },

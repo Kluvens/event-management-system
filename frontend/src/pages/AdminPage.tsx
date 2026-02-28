@@ -12,7 +12,9 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts'
-import { Search, Plus, Pencil, Trash2 } from 'lucide-react'
+import { Search, Plus, Pencil, Trash2, CheckCircle2, XCircle, Clock } from 'lucide-react'
+import { formatDistanceToNow } from 'date-fns'
+import { useAdminPayouts, useProcessPayout } from '@/api/payouts'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -852,6 +854,149 @@ function StoreTab() {
 
 // ─── Main AdminPage ────────────────────────────────────────────────────────────
 
+const payoutStatusMeta: Record<string, { icon: React.ElementType; className: string; label: string }> = {
+  Pending:  { icon: Clock,        className: 'border-amber-200 bg-amber-50 text-amber-700',   label: 'Pending'  },
+  Approved: { icon: CheckCircle2, className: 'border-emerald-200 bg-emerald-50 text-emerald-700', label: 'Approved' },
+  Rejected: { icon: XCircle,      className: 'border-red-200 bg-red-50 text-red-600',         label: 'Rejected' },
+}
+
+function PayoutsTab() {
+  const [statusFilter, setStatusFilter] = useState<string>('Pending')
+  const { data: payouts = [], isPending } = useAdminPayouts(statusFilter === 'all' ? undefined : statusFilter)
+  const process = useProcessPayout()
+  const [noteTarget, setNoteTarget] = useState<{ id: number; action: 'Approved' | 'Rejected' } | null>(null)
+  const [adminNote, setAdminNote] = useState('')
+
+  function handleProcess() {
+    if (!noteTarget) return
+    process.mutate(
+      { id: noteTarget.id, status: noteTarget.action, adminNotes: adminNote || undefined },
+      { onSuccess: () => { setNoteTarget(null); setAdminNote('') } },
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        {(['Pending', 'Approved', 'Rejected', 'all'] as const).map((s) => (
+          <Button
+            key={s}
+            size="sm"
+            variant={statusFilter === s ? 'default' : 'outline'}
+            onClick={() => setStatusFilter(s)}
+          >
+            {s === 'all' ? 'All' : s}
+          </Button>
+        ))}
+      </div>
+
+      {isPending ? (
+        <LoadingSpinner />
+      ) : payouts.length === 0 ? (
+        <div className="rounded-xl border border-border bg-card py-12 text-center text-muted-foreground">
+          No payout requests.
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Organizer</TableHead>
+                <TableHead>Amount</TableHead>
+                <TableHead>Bank Details</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Requested</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {payouts.map((p) => {
+                const meta = payoutStatusMeta[p.status] ?? payoutStatusMeta.Pending
+                const Icon = meta.icon
+                return (
+                  <TableRow key={p.id}>
+                    <TableCell className="font-medium">{p.organizerName}</TableCell>
+                    <TableCell className="font-semibold">{formatCurrency(p.amount)}</TableCell>
+                    <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">
+                      {p.bankDetails}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={`gap-1 ${meta.className}`}>
+                        <Icon className="h-3 w-3" />
+                        {meta.label}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {formatDistanceToNow(new Date(p.requestedAt), { addSuffix: true })}
+                    </TableCell>
+                    <TableCell>
+                      {p.status === 'Pending' && (
+                        <div className="flex gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                            onClick={() => { setNoteTarget({ id: p.id, action: 'Approved' }); setAdminNote('') }}
+                          >
+                            Approve
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-red-200 text-red-600 hover:bg-red-50"
+                            onClick={() => { setNoteTarget({ id: p.id, action: 'Rejected' }); setAdminNote('') }}
+                          >
+                            Reject
+                          </Button>
+                        </div>
+                      )}
+                      {p.adminNotes && p.status !== 'Pending' && (
+                        <span className="text-xs text-muted-foreground">{p.adminNotes}</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      {/* Approve / Reject note dialog */}
+      <Dialog open={!!noteTarget} onOpenChange={() => setNoteTarget(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{noteTarget?.action} Payout</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-1">
+            <div className="space-y-1.5">
+              <Label htmlFor="adminNote">Note to organiser (optional)</Label>
+              <textarea
+                id="adminNote"
+                rows={3}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                placeholder={noteTarget?.action === 'Approved' ? 'Payment sent to BSB…' : 'Reason for rejection…'}
+                value={adminNote}
+                onChange={(e) => setAdminNote(e.target.value)}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setNoteTarget(null)}>Cancel</Button>
+              <Button
+                disabled={process.isPending}
+                onClick={handleProcess}
+                className={noteTarget?.action === 'Rejected' ? 'bg-red-600 hover:bg-red-700' : ''}
+              >
+                {process.isPending ? 'Saving…' : noteTarget?.action}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
 export function AdminPage() {
   return (
     <div className="container mx-auto max-w-6xl px-4 py-8">
@@ -864,6 +1009,7 @@ export function AdminPage() {
           <TabsTrigger value="bookings">Bookings</TabsTrigger>
           <TabsTrigger value="taxonomy">Categories & Tags</TabsTrigger>
           <TabsTrigger value="store">Store</TabsTrigger>
+          <TabsTrigger value="payouts">Payouts</TabsTrigger>
         </TabsList>
         <TabsContent value="overview"><OverviewTab /></TabsContent>
         <TabsContent value="users"><UsersTab /></TabsContent>
@@ -871,6 +1017,7 @@ export function AdminPage() {
         <TabsContent value="bookings"><BookingsTab /></TabsContent>
         <TabsContent value="taxonomy"><TaxonomyTab /></TabsContent>
         <TabsContent value="store"><StoreTab /></TabsContent>
+        <TabsContent value="payouts"><PayoutsTab /></TabsContent>
       </Tabs>
     </div>
   )

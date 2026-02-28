@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { Calendar, MapPin, QrCode, CalendarPlus } from 'lucide-react'
+import { Calendar, MapPin, QrCode, CalendarPlus, Printer, Ticket } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Dialog,
@@ -51,6 +52,35 @@ export function MyBookingsPage() {
   const cancel = useCancelBooking()
   const [qrBooking, setQrBooking] = useState<Booking | null>(null)
   const [cancelTarget, setCancelTarget] = useState<Booking | null>(null)
+  const ticketRef = useRef<HTMLDivElement>(null)
+
+  function handlePrint() {
+    const content = ticketRef.current
+    if (!content) return
+    const win = window.open('', '_blank', 'width=480,height=700')
+    if (!win) return
+    win.document.write(`
+      <html><head><title>Event Ticket</title>
+      <style>
+        body { font-family: sans-serif; padding: 24px; color: #111; }
+        .logo { font-size: 18px; font-weight: 800; color: #d97706; margin-bottom: 16px; }
+        .title { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+        .meta { font-size: 13px; color: #555; margin: 2px 0; }
+        .divider { border: none; border-top: 1px dashed #ccc; margin: 16px 0; }
+        .label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: .05em; }
+        .value { font-size: 14px; font-weight: 600; margin-top: 2px; }
+        .qr { text-align: center; margin: 20px 0; }
+        .token { font-family: monospace; font-size: 10px; color: #888; word-break: break-all; text-align: center; }
+        .footer { font-size: 11px; color: #aaa; text-align: center; margin-top: 24px; }
+      </style></head><body>
+      ${content.innerHTML}
+      </body></html>
+    `)
+    win.document.close()
+    win.focus()
+    win.print()
+    win.close()
+  }
 
   const now = Date.now()
   const confirmed = bookings.filter((b) => b.status === 'Confirmed')
@@ -210,20 +240,80 @@ export function MyBookingsPage() {
         </TabsContent>
       </Tabs>
 
-      {/* QR Modal */}
+      {/* Ticket Modal */}
       <Dialog open={!!qrBooking} onOpenChange={() => setQrBooking(null)}>
-        <DialogContent className="max-w-xs">
-          <DialogHeader>
-            <DialogTitle>Check-In QR Code</DialogTitle>
+        <DialogContent className="max-w-sm p-0">
+          <DialogHeader className="px-6 pt-5">
+            <DialogTitle className="flex items-center gap-2">
+              <Ticket className="h-4 w-4 text-amber-500" />
+              Your Ticket
+            </DialogTitle>
           </DialogHeader>
-          <div className="flex flex-col items-center gap-4 py-4">
-            <p className="text-center text-sm font-medium text-foreground">
-              {qrBooking?.eventTitle}
+
+          {/* Printable ticket area */}
+          <div ref={ticketRef} className="px-6 pb-2">
+            {/* Header */}
+            <p className="logo mb-3 text-lg font-extrabold text-amber-600">EventHub</p>
+
+            <p className="title text-base font-bold leading-snug">{qrBooking?.eventTitle}</p>
+
+            <div className="mt-2 space-y-1">
+              <p className="meta flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Calendar className="h-3 w-3" />
+                {qrBooking && formatDate(qrBooking.eventStartDate, 'EEE, MMM d yyyy · h:mm a')}
+              </p>
+              <p className="meta flex items-center gap-1.5 text-xs text-muted-foreground">
+                <MapPin className="h-3 w-3" />
+                {qrBooking?.eventLocation}
+              </p>
+            </div>
+
+            <Separator className="divider my-4 border-dashed" />
+
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="label text-[10px] uppercase tracking-wide text-muted-foreground">Booking ID</p>
+                <p className="value font-semibold">#{qrBooking?.id}</p>
+              </div>
+              <div>
+                <p className="label text-[10px] uppercase tracking-wide text-muted-foreground">Amount Paid</p>
+                <p className="value font-semibold">{qrBooking && formatCurrency(qrBooking.eventPrice)}</p>
+              </div>
+              {(qrBooking?.pointsEarned ?? 0) > 0 && (
+                <div>
+                  <p className="label text-[10px] uppercase tracking-wide text-muted-foreground">Points Earned</p>
+                  <p className="value font-semibold text-amber-600">+{qrBooking?.pointsEarned}</p>
+                </div>
+              )}
+              {qrBooking?.isCheckedIn && (
+                <div>
+                  <p className="label text-[10px] uppercase tracking-wide text-muted-foreground">Checked In</p>
+                  <p className="value font-semibold text-emerald-600">Yes</p>
+                </div>
+              )}
+            </div>
+
+            <Separator className="divider my-4 border-dashed" />
+
+            {/* QR Code */}
+            <div className="qr flex flex-col items-center gap-3">
+              <QRCodeSVG value={qrBooking?.checkInToken ?? ''} size={180} />
+              <p className="token break-all text-center font-mono text-[10px] text-muted-foreground">
+                {qrBooking?.checkInToken}
+              </p>
+            </div>
+
+            <p className="footer mt-4 text-center text-[10px] text-muted-foreground">
+              Present this QR code at the door for check-in.
             </p>
-            <QRCodeSVG value={qrBooking?.checkInToken ?? ''} size={200} />
-            <p className="break-all text-center font-mono text-xs text-muted-foreground">
-              {qrBooking?.checkInToken}
-            </p>
+          </div>
+
+          <div className="flex justify-end gap-2 border-t border-border px-6 py-4">
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={handlePrint}>
+              <Printer className="h-3.5 w-3.5" />
+              Print
+            </Button>
+            <Button size="sm" onClick={() => setQrBooking(null)}>Close</Button>
           </div>
         </DialogContent>
       </Dialog>

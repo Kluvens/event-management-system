@@ -20,15 +20,21 @@ import {
   Pencil,
   ChevronDown,
   ChevronUp,
+  Banknote,
+  Clock,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
+import { formatDistanceToNow } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Badge } from '@/components/ui/badge'
 import {
   Dialog,
   DialogContent,
@@ -51,6 +57,7 @@ import { AttendeeTable } from '@/features/organizer/AttendeeTable'
 import { useOrganizerDashboard, useUpdateProfile } from '@/api/organizers'
 import { useSubscribers } from '@/api/subscriptions'
 import { useEventAnalytics } from '@/api/analytics'
+import { useMyPayouts, useCreatePayout } from '@/api/payouts'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import type { DashboardEvent, UpdateOrganizerProfileRequest } from '@/types'
 
@@ -62,6 +69,19 @@ const profileSchema = z.object({
 })
 
 type ProfileForm = z.infer<typeof profileSchema>
+
+const payoutSchema = z.object({
+  amount: z.coerce.number().positive('Amount must be greater than 0'),
+  bankDetails: z.string().min(5, 'Please provide your bank or PayPal details'),
+})
+
+type PayoutForm = z.infer<typeof payoutSchema>
+
+const payoutStatusMeta: Record<string, { icon: React.ElementType; className: string }> = {
+  Pending:  { icon: Clock,         className: 'border-amber-200 bg-amber-50 text-amber-700' },
+  Approved: { icon: CheckCircle2,  className: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
+  Rejected: { icon: XCircle,       className: 'border-red-200 bg-red-50 text-red-600' },
+}
 
 function StatCard({
   icon: Icon,
@@ -191,10 +211,13 @@ function ExpandableEventRow({ event }: { event: DashboardEvent }) {
 
 export function OrganizerDashboardPage() {
   const [profileOpen, setProfileOpen] = useState(false)
+  const [payoutOpen, setPayoutOpen] = useState(false)
 
   const { data: dashboard, isPending, error } = useOrganizerDashboard()
   const { data: subscribers = [] } = useSubscribers()
+  const { data: payouts = [] } = useMyPayouts()
   const updateProfile = useUpdateProfile()
+  const createPayout = useCreatePayout()
 
   const {
     register,
@@ -203,6 +226,25 @@ export function OrganizerDashboardPage() {
   } = useForm<ProfileForm>({
     resolver: zodResolver(profileSchema),
   })
+
+  const {
+    register: registerPayout,
+    handleSubmit: handlePayoutSubmit,
+    reset: resetPayout,
+    formState: { errors: payoutErrors },
+  } = useForm<PayoutForm>({ resolver: zodResolver(payoutSchema) })
+
+  function onPayoutSubmit(data: PayoutForm) {
+    createPayout.mutate(
+      { amount: data.amount, bankDetails: data.bankDetails },
+      {
+        onSuccess: () => {
+          resetPayout()
+          setPayoutOpen(false)
+        },
+      },
+    )
+  }
 
   const onProfileSubmit = (data: ProfileForm) => {
     const body: UpdateOrganizerProfileRequest = {
@@ -366,6 +408,9 @@ export function OrganizerDashboardPage() {
           <TabsTrigger value="subscribers">
             Subscribers ({subscribers.length})
           </TabsTrigger>
+          <TabsTrigger value="payouts">
+            Payouts {payouts.filter((p) => p.status === 'Pending').length > 0 && `(${payouts.filter((p) => p.status === 'Pending').length})`}
+          </TabsTrigger>
         </TabsList>
 
         {draftEvents.length > 0 && (
@@ -484,6 +529,121 @@ export function OrganizerDashboardPage() {
                   ))}
                 </TableBody>
               </Table>
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="payouts">
+          <div className="space-y-4">
+            {/* Summary + request button */}
+            <div className="flex items-center justify-between rounded-xl border border-border bg-card p-5 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg bg-amber-500 p-2">
+                  <Banknote className="h-4 w-4 text-white" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Revenue</p>
+                  <p className="text-xl font-bold">{formatCurrency(dashboard.totalRevenue)}</p>
+                </div>
+              </div>
+              <Dialog open={payoutOpen} onOpenChange={setPayoutOpen}>
+                <DialogTrigger asChild>
+                  <Button
+                    disabled={payouts.some((p) => p.status === 'Pending')}
+                    title={payouts.some((p) => p.status === 'Pending') ? 'You have a pending request' : undefined}
+                  >
+                    <Banknote className="mr-1.5 h-4 w-4" />
+                    Request Payout
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Request a Payout</DialogTitle>
+                  </DialogHeader>
+                  <form onSubmit={handlePayoutSubmit(onPayoutSubmit)} className="space-y-4 pt-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="amount">Amount (AUD)</Label>
+                      <Input
+                        id="amount"
+                        type="number"
+                        step="0.01"
+                        placeholder="e.g. 500.00"
+                        {...registerPayout('amount')}
+                      />
+                      {payoutErrors.amount && (
+                        <p className="text-xs text-red-500">{payoutErrors.amount.message}</p>
+                      )}
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="bankDetails">Bank / PayPal Details</Label>
+                      <Textarea
+                        id="bankDetails"
+                        rows={3}
+                        placeholder="BSB & account number, or PayPal email…"
+                        {...registerPayout('bankDetails')}
+                      />
+                      {payoutErrors.bankDetails && (
+                        <p className="text-xs text-red-500">{payoutErrors.bankDetails.message}</p>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Payouts are processed manually within 5 business days. You will receive a
+                      notification when your request is approved or rejected.
+                    </p>
+                    <div className="flex justify-end gap-2 pt-1">
+                      <Button type="button" variant="outline" onClick={() => setPayoutOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button type="submit" disabled={createPayout.isPending}>
+                        {createPayout.isPending ? 'Submitting…' : 'Submit Request'}
+                      </Button>
+                    </div>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            {/* Payout history */}
+            {payouts.length === 0 ? (
+              <div className="rounded-xl border border-border bg-card py-12 text-center text-muted-foreground">
+                No payout requests yet.
+              </div>
+            ) : (
+              <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Requested</TableHead>
+                      <TableHead>Notes</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {payouts.map((p) => {
+                      const meta = payoutStatusMeta[p.status] ?? payoutStatusMeta.Pending
+                      const Icon = meta.icon
+                      return (
+                        <TableRow key={p.id}>
+                          <TableCell className="font-semibold">{formatCurrency(p.amount)}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className={`gap-1 ${meta.className}`}>
+                              <Icon className="h-3 w-3" />
+                              {p.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {formatDistanceToNow(new Date(p.requestedAt), { addSuffix: true })}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {p.adminNotes ?? '—'}
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </div>
         </TabsContent>

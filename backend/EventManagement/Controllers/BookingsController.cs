@@ -3,6 +3,7 @@ using EventManagement.DTOs;
 using EventManagement.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using EventManagement.Services;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,6 +12,7 @@ namespace EventManagement.Controllers;
 [ApiController]
 [Route("api/bookings")]
 [Authorize]
+[EnableRateLimiting("booking")]
 public class BookingsController(AppDbContext db, ICognitoUserResolver resolver, IWaitlistService waitlist)
     : AppControllerBase(resolver)
 {
