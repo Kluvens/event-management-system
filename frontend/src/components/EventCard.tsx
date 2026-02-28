@@ -91,12 +91,12 @@ export function EventCard({ event }: Props) {
     <Link
       to={`/events/${event.id}`}
       className={cn(
-        'group block overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border transition-all duration-300 hover:shadow-xl hover:-translate-y-1',
+        'group flex h-full flex-col overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border transition-all duration-300 hover:shadow-xl hover:-translate-y-1',
         isDimmed && 'opacity-60 grayscale'
       )}
     >
       {/* Hero image */}
-      <div className="relative h-48 w-full overflow-hidden sm:h-52">
+      <div className="relative h-48 w-full shrink-0 overflow-hidden sm:h-52">
         {event.imageUrl ? (
           <motion.img
             src={event.imageUrl}
@@ -113,10 +113,12 @@ export function EventCard({ event }: Props) {
           </div>
         )}
 
-        {/* Status badge — top-left */}
-        <div className="absolute left-3 top-3">
-          <StatusBadge status={event.displayStatus} showDot />
-        </div>
+        {/* Status badge — top-left (hidden for Published, which is the default) */}
+        {event.displayStatus !== 'Published' && (
+          <div className="absolute left-3 top-3">
+            <StatusBadge status={event.displayStatus} showDot />
+          </div>
+        )}
 
         {/* Heart / favourite button — top-right */}
         <div className="absolute right-3 top-3">
@@ -124,10 +126,10 @@ export function EventCard({ event }: Props) {
         </div>
       </div>
 
-      {/* Card body */}
-      <div className="p-4">
+      {/* Card body — flex column so price always sits at the bottom */}
+      <div className="flex flex-1 flex-col p-4">
         {pill && (
-          <span className={cn('mb-2 inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold', pill.classes)}>
+          <span className={cn('mb-2 self-start rounded-full px-2.5 py-0.5 text-xs font-semibold', pill.classes)}>
             {pill.label}
           </span>
         )}
@@ -146,7 +148,7 @@ export function EventCard({ event }: Props) {
           <span className="truncate">{event.location}</span>
         </div>
 
-        <p className={cn('text-sm font-bold sm:text-base', isFree ? 'text-emerald-600' : 'text-card-foreground')}>
+        <p className={cn('mt-auto text-sm font-bold sm:text-base', isFree ? 'text-emerald-600' : 'text-card-foreground')}>
           {isFree ? 'Free' : formatCurrency(event.price)}
         </p>
       </div>

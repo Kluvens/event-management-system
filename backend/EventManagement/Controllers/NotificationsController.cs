@@ -24,7 +24,7 @@ public class NotificationsController(AppDbContext db, ICognitoUserResolver resol
             .Where(n => n.UserId == userId)
             .OrderByDescending(n => n.CreatedAt)
             .Take(50)
-            .Select(n => new NotificationResponse(n.Id, n.Title, n.Message, n.IsRead, n.CreatedAt, n.EventId))
+            .Select(n => new NotificationResponse(n.Id, n.Type, n.Title, n.Message, n.IsRead, n.CreatedAt, n.EventId))
             .ToListAsync();
 
         return Ok(notifications);

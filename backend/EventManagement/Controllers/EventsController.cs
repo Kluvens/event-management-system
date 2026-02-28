@@ -296,8 +296,9 @@ public class EventsController(AppDbContext db, ICognitoUserResolver resolver)
             db.Notifications.AddRange(recipients.Select(uid => new Notification
             {
                 UserId  = uid,
+                Type    = "EventUpdate",
                 Title   = $"Event updated: {ev.Title}",
-                Message = $"The details for \"{ev.Title}\" have been updated.",
+                Message = $"The organiser has updated details for \"{ev.Title}\". Check the event page for the latest information.",
                 EventId = ev.Id,
             }));
             await db.SaveChangesAsync();
@@ -322,7 +323,6 @@ public class EventsController(AppDbContext db, ICognitoUserResolver resolver)
             return BadRequest(new { message = "Event is already cancelled." });
 
         ev.Status = StatusCancelled;
-        await db.SaveChangesAsync();
 
         db.Announcements.Add(new Announcement
         {
@@ -330,6 +330,23 @@ public class EventsController(AppDbContext db, ICognitoUserResolver resolver)
             Title   = "Event Cancelled",
             Message = $"{ev.Title} has been cancelled."
         });
+
+        // Notify all confirmed attendees
+        var cancelAttendeeIds = await db.Bookings
+            .Where(b => b.EventId == id && b.Status == StatusConfirmed)
+            .Select(b => b.UserId)
+            .Distinct()
+            .ToListAsync();
+
+        db.Notifications.AddRange(cancelAttendeeIds.Select(uid => new Notification
+        {
+            UserId  = uid,
+            Type    = "EventCancelled",
+            Title   = $"Event cancelled: {ev.Title}",
+            Message = $"Unfortunately, \"{ev.Title}\" has been cancelled. We're sorry for the inconvenience.",
+            EventId = id,
+        }));
+
         await db.SaveChangesAsync();
 
         return NoContent();
@@ -354,7 +371,6 @@ public class EventsController(AppDbContext db, ICognitoUserResolver resolver)
         ev.StartDate     = req.NewStartDate;
         ev.EndDate       = req.NewEndDate;
         ev.Status        = StatusPostponed;
-        await db.SaveChangesAsync();
 
         db.Announcements.Add(new Announcement
         {
@@ -362,6 +378,23 @@ public class EventsController(AppDbContext db, ICognitoUserResolver resolver)
             Title   = "Event Postponed",
             Message = $"{ev.Title} has been moved to {req.NewStartDate:MMM dd yyyy}."
         });
+
+        // Notify all confirmed attendees
+        var postponeAttendeeIds = await db.Bookings
+            .Where(b => b.EventId == id && b.Status == StatusConfirmed)
+            .Select(b => b.UserId)
+            .Distinct()
+            .ToListAsync();
+
+        db.Notifications.AddRange(postponeAttendeeIds.Select(uid => new Notification
+        {
+            UserId  = uid,
+            Type    = "EventPostponed",
+            Title   = $"Event rescheduled: {ev.Title}",
+            Message = $"\"{ev.Title}\" has been moved to {req.NewStartDate:MMM d, yyyy}. Your booking remains valid.",
+            EventId = id,
+        }));
+
         await db.SaveChangesAsync();
 
         return NoContent();
@@ -433,8 +466,9 @@ public class EventsController(AppDbContext db, ICognitoUserResolver resolver)
         db.Notifications.AddRange(attendeeIds.Select(uid => new Notification
         {
             UserId  = uid,
-            Title   = $"New announcement: {ev.Title}",
-            Message = $"{req.Title} — {req.Message}",
+            Type    = "Announcement",
+            Title   = $"📢 {req.Title}",
+            Message = req.Message,
             EventId = id,
         }));
 

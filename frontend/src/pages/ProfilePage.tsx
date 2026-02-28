@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { User, Globe, Coins } from 'lucide-react'
+import { User, Globe, Coins, Award, Sparkles, Zap, Star, Gift, ShoppingBag } from 'lucide-react'
+import { formatDistanceToNow } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -13,7 +14,9 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { useAuthStore } from '@/stores/authStore'
 import { useUpdateProfile } from '@/api/organizers'
+import { useMyPurchases } from '@/api/store'
 import { getInitials } from '@/lib/utils'
+import type { StoreCategory } from '@/types'
 
 const schema = z.object({
   name: z.string().min(1, 'Name is required').max(80, 'Name too long'),
@@ -25,6 +28,14 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>
 
+const categoryMeta: Record<StoreCategory, { icon: React.ElementType; label: string; color: string }> = {
+  Badge:       { icon: Award,    label: 'Badge',       color: 'text-amber-500 bg-amber-50 dark:bg-amber-950/40' },
+  Cosmetic:    { icon: Sparkles, label: 'Cosmetic',    color: 'text-pink-500 bg-pink-50 dark:bg-pink-950/40' },
+  Feature:     { icon: Zap,      label: 'Feature',     color: 'text-blue-500 bg-blue-50 dark:bg-blue-950/40' },
+  Perk:        { icon: Star,     label: 'Perk',        color: 'text-purple-500 bg-purple-50 dark:bg-purple-950/40' },
+  Collectible: { icon: Gift,     label: 'Collectible', color: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-950/40' },
+}
+
 const tierColors: Record<string, string> = {
   Bronze: 'bg-amber-700 text-white',
   Silver: 'bg-slate-400 text-white',
@@ -35,6 +46,7 @@ const tierColors: Record<string, string> = {
 export function ProfilePage() {
   const { user, setUser } = useAuthStore()
   const updateProfile = useUpdateProfile()
+  const { data: purchases = [] } = useMyPurchases()
   const [editing, setEditing] = useState(false)
 
   const {
@@ -221,6 +233,63 @@ export function ProfilePage() {
           )}
         </CardContent>
       </Card>
+      {/* My Collection */}
+      <div className="mt-8">
+        <div className="mb-4 flex items-center gap-2">
+          <ShoppingBag className="h-5 w-5 text-amber-500" />
+          <h2 className="text-lg font-bold">My Collection</h2>
+          {purchases.length > 0 && (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-950/50 dark:text-amber-400">
+              {purchases.length} item{purchases.length !== 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
+
+        {purchases.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center gap-2 py-12 text-center">
+              <ShoppingBag className="h-10 w-10 text-muted-foreground/30" />
+              <p className="font-medium text-muted-foreground">No items yet</p>
+              <p className="text-sm text-muted-foreground/60">
+                Visit the Loyalty Store to spend your points on exclusive items.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {purchases.map((p) => {
+              const meta = categoryMeta[p.product.category] ?? categoryMeta.Collectible
+              const Icon = meta.icon
+              return (
+                <Card key={p.id} className="flex items-start gap-4 p-4">
+                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${meta.color}`}>
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="font-semibold leading-snug">{p.product.name}</p>
+                      <Badge variant="outline" className="shrink-0 text-xs">
+                        {meta.label}
+                      </Badge>
+                    </div>
+                    <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+                      {p.product.description}
+                    </p>
+                    <div className="mt-2 flex items-center gap-3 text-[11px] text-muted-foreground/70">
+                      <span className="flex items-center gap-1">
+                        <Coins className="h-3 w-3" />
+                        {p.pointsSpent.toLocaleString()} pts
+                      </span>
+                      <span>·</span>
+                      <span>{formatDistanceToNow(new Date(p.purchasedAt), { addSuffix: true })}</span>
+                    </div>
+                  </div>
+                </Card>
+              )
+            })}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

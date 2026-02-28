@@ -85,6 +85,16 @@ public class BookingsController(AppDbContext db, ICognitoUserResolver resolver, 
             existing.PointsEarned = pointsEarned;
             existing.CheckInToken ??= Guid.NewGuid().ToString();
             user.LoyaltyPoints += pointsEarned;
+
+            db.Notifications.Add(new Notification
+            {
+                UserId  = userId,
+                Type    = "BookingConfirmation",
+                Title   = "Booking confirmed!",
+                Message = $"You're going to \"{ev.Title}\" on {ev.StartDate:MMM d, yyyy}. You earned {pointsEarned} loyalty points.",
+                EventId = ev.Id,
+            });
+
             await db.SaveChangesAsync();
 
             return Ok(ToResponse(existing, ev));
@@ -100,6 +110,16 @@ public class BookingsController(AppDbContext db, ICognitoUserResolver resolver, 
 
         user.LoyaltyPoints += pointsEarned;
         db.Bookings.Add(booking);
+
+        db.Notifications.Add(new Notification
+        {
+            UserId  = userId,
+            Type    = "BookingConfirmation",
+            Title   = "Booking confirmed!",
+            Message = $"You're going to \"{ev.Title}\" on {ev.StartDate:MMM d, yyyy}. You earned {pointsEarned} loyalty points.",
+            EventId = ev.Id,
+        });
+
         await db.SaveChangesAsync();
 
         return CreatedAtAction(nameof(GetMyBookings), ToResponse(booking, ev));

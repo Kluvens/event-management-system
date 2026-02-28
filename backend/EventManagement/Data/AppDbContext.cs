@@ -1,5 +1,6 @@
 using EventManagement.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace EventManagement.Data;
 
@@ -21,6 +22,15 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<StoreProduct> StoreProducts => Set<StoreProduct>();
     public DbSet<UserPurchase> UserPurchases => Set<UserPurchase>();
+
+    // SQLite stores DateTime without timezone info; this ensures all values are
+    // read back as UTC so the JSON serializer emits a 'Z' suffix.
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
+        configurationBuilder
+            .Properties<DateTime>()
+            .HaveConversion<UtcDateTimeConverter>();
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -198,3 +208,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         );
     }
 }
+
+/// <summary>
+/// Ensures DateTime values read from SQLite (which has no timezone column)
+/// are tagged as UTC so System.Text.Json serializes them with a 'Z' suffix.
+/// </summary>
+public class UtcDateTimeConverter()
+    : ValueConverter<DateTime, DateTime>(
+        v => v.Kind == DateTimeKind.Utc ? v : v.ToUniversalTime(),
+        v => DateTime.SpecifyKind(v, DateTimeKind.Utc));

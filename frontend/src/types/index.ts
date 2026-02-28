@@ -334,8 +334,21 @@ export interface WaitlistPosition {
 
 // ─── Notifications ────────────────────────────────────────────────────────────
 
+export type NotificationType =
+  | 'BookingConfirmation'
+  | 'EventReminder'
+  | 'ReviewReminder'
+  | 'EventUpdate'
+  | 'Announcement'
+  | 'EventCancelled'
+  | 'EventPostponed'
+  | 'WaitlistPromotion'
+  | 'SystemAnnouncement'
+  | 'General'
+
 export interface Notification {
   id: number
+  type: NotificationType
   title: string
   message: string
   isRead: boolean

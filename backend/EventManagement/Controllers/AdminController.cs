@@ -397,4 +397,27 @@ public class AdminController(AppDbContext db) : ControllerBase
             totalEvents, activeEvents, suspendedEvents,
             totalBookings, confirmedBookings, totalRevenue));
     }
+
+    // ── System announcements ───────────────────────────────────────
+
+    /// <summary>
+    /// Broadcast a system-level notification to every user in the platform.
+    /// </summary>
+    [Authorize(Roles = RoleAdmins)]
+    [HttpPost("notifications/announcement")]
+    public async Task<IActionResult> BroadcastAnnouncement(SystemAnnouncementRequest req)
+    {
+        var allUserIds = await db.Users.Select(u => u.Id).ToListAsync();
+
+        db.Notifications.AddRange(allUserIds.Select(uid => new Notification
+        {
+            UserId  = uid,
+            Type    = "SystemAnnouncement",
+            Title   = req.Title,
+            Message = req.Message,
+        }));
+
+        await db.SaveChangesAsync();
+        return Ok(new { sent = allUserIds.Count });
+    }
 }
