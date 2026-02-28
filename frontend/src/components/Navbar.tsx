@@ -205,7 +205,7 @@ export function Navbar() {
                 Create Event
               </Button>
 
-              <NotificationBell />
+              <NotificationBell transparent={isTransparent} />
 
               <Button
                 variant="ghost"
@@ -225,7 +225,11 @@ export function Navbar() {
                 <DropdownMenuTrigger asChild>
                   <button className="flex items-center rounded-full focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2">
                     <Avatar className="h-8 w-8">
-                      <AvatarFallback className="bg-amber-100 text-xs font-semibold text-amber-700">
+                      <AvatarFallback className={`text-xs font-semibold ${
+                        isTransparent
+                          ? 'bg-white/20 text-white'
+                          : 'bg-amber-100 text-amber-700'
+                      }`}>
                         {getInitials(user?.name ?? '?')}
                       </AvatarFallback>
                     </Avatar>

@@ -41,7 +41,7 @@ const TYPE_META: Record<NotificationType, TypeMeta> = {
   General:             { icon: Bell,          iconClass: 'text-slate-500',   bgClass: 'bg-slate-50 dark:bg-slate-800/40'     },
 }
 
-export function NotificationBell() {
+export function NotificationBell({ transparent = false }: { transparent?: boolean }) {
   const navigate = useNavigate()
   const { data: notifications = [] } = useNotifications()
   const { data: unreadData } = useUnreadCount()
@@ -58,7 +58,11 @@ export function NotificationBell() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative">
+        <Button
+          variant="ghost"
+          size="icon"
+          className={`relative ${transparent ? 'text-white/80 hover:text-white hover:bg-white/10' : ''}`}
+        >
           <Bell className="h-5 w-5" />
           {unread > 0 && (
             <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white">
