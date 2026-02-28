@@ -43,7 +43,7 @@ function getLabelClass(b: Booking): string {
     return 'border-border bg-muted text-muted-foreground'
   if (new Date(b.eventStartDate).getTime() <= now)
     return 'border-emerald-200 bg-emerald-50 text-emerald-700'
-  return 'border-indigo-200 bg-indigo-50 text-indigo-700'
+  return 'border-amber-200 bg-amber-50 text-amber-700'
 }
 
 export function MyBookingsPage() {
@@ -66,7 +66,7 @@ export function MyBookingsPage() {
         <div className="mb-3 flex items-start justify-between gap-3">
           <Link
             to={`/events/${booking.eventId}`}
-            className="text-sm font-semibold text-card-foreground hover:text-indigo-600 sm:text-base"
+            className="text-sm font-semibold text-card-foreground hover:text-amber-600 sm:text-base"
           >
             {booking.eventTitle}
           </Link>
@@ -94,7 +94,7 @@ export function MyBookingsPage() {
             {formatCurrency(booking.eventPrice)}
           </span>
           {booking.pointsEarned > 0 && (
-            <span className="text-xs font-medium text-indigo-600">
+            <span className="text-xs font-medium text-amber-600">
               +{booking.pointsEarned} pts
             </span>
           )}

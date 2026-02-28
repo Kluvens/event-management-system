@@ -87,7 +87,7 @@ export function CheckInScannerPage() {
   return (
     <div className="container mx-auto max-w-lg px-4 py-8">
       <h1 className="mb-6 flex items-center gap-2 text-2xl font-bold">
-        <QrCode className="h-6 w-6 text-indigo-600" />
+        <QrCode className="h-6 w-6 text-amber-600" />
         Check-In Scanner
       </h1>
 

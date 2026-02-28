@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import {
   Menu,
   X,
@@ -16,6 +16,7 @@ import {
   Link2,
   UserCircle,
 } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
@@ -49,13 +50,27 @@ import { toast } from 'sonner'
 
 export function Navbar() {
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const { user, setUser, logout, isAdmin } = useAuthStore()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [socialOpen, setSocialOpen] = useState(false)
   const [twitterVal, setTwitterVal] = useState('')
   const [instagramVal, setInstagramVal] = useState('')
+  const [isScrolled, setIsScrolled] = useState(false)
   const { theme, toggleTheme } = useTheme()
   const updateProfile = useUpdateProfile()
+
+  const isHome = pathname === '/'
+  const isTransparent = isHome && !isScrolled
+
+  useEffect(() => {
+    function onScroll() {
+      setIsScrolled(window.scrollY > 60)
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    onScroll()
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   async function handleLogout() {
     logout()
@@ -95,28 +110,24 @@ export function Navbar() {
     )
   }
 
+  const linkClass = isTransparent
+    ? 'text-sm font-medium text-white/80 transition-colors hover:text-white'
+    : 'text-sm font-medium text-muted-foreground transition-colors hover:text-foreground'
+
   const navLinks = (
     <>
-      <Link
-        to="/"
-        className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-        onClick={() => setMobileOpen(false)}
-      >
+      <Link to="/" className={linkClass} onClick={() => setMobileOpen(false)}>
         Browse Events
       </Link>
       {user && (
-        <Link
-          to="/my-bookings"
-          className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-          onClick={() => setMobileOpen(false)}
-        >
+        <Link to="/my-bookings" className={linkClass} onClick={() => setMobileOpen(false)}>
           My Bookings
         </Link>
       )}
       {user && (
         <Link
           to="/favorites"
-          className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+          className={`flex items-center gap-1.5 ${linkClass}`}
           onClick={() => setMobileOpen(false)}
         >
           <Heart className="h-3.5 w-3.5" />
@@ -126,7 +137,7 @@ export function Navbar() {
       {user && (
         <Link
           to="/store"
-          className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+          className={`flex items-center gap-1.5 ${linkClass}`}
           onClick={() => setMobileOpen(false)}
         >
           <ShoppingBag className="h-3.5 w-3.5" />
@@ -134,18 +145,14 @@ export function Navbar() {
         </Link>
       )}
       {user && (
-        <Link
-          to="/dashboard"
-          className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-          onClick={() => setMobileOpen(false)}
-        >
+        <Link to="/dashboard" className={linkClass} onClick={() => setMobileOpen(false)}>
           Dashboard
         </Link>
       )}
       {isAdmin() && (
         <Link
           to="/admin"
-          className="text-sm font-medium text-indigo-600 transition-colors hover:text-indigo-700"
+          className="text-sm font-medium text-amber-500 transition-colors hover:text-amber-400"
           onClick={() => setMobileOpen(false)}
         >
           Admin
@@ -155,14 +162,25 @@ export function Navbar() {
   )
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+    <motion.header
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        isTransparent
+          ? 'border-transparent bg-transparent'
+          : 'border-b border-border bg-background/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/80'
+      }`}
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: 'easeOut' }}
+    >
       <div className="container mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
         {/* Logo */}
         <Link
           to="/"
-          className="flex items-center gap-1.5 font-bold text-foreground"
+          className={`flex items-center gap-1.5 font-bold transition-colors ${
+            isTransparent ? 'text-white' : 'text-foreground'
+          }`}
         >
-          <Zap className="h-5 w-5 text-indigo-600" />
+          <Zap className="h-5 w-5 text-amber-400" />
           <span>EventHub</span>
         </Link>
 
@@ -174,9 +192,13 @@ export function Navbar() {
           {user ? (
             <>
               <Button
-                variant="outline"
+                variant={isTransparent ? 'outline' : 'outline'}
                 size="sm"
-                className="hidden gap-1 md:flex"
+                className={`hidden gap-1 md:flex ${
+                  isTransparent
+                    ? 'border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white'
+                    : ''
+                }`}
                 onClick={() => navigate('/events/create')}
               >
                 <Plus className="h-3.5 w-3.5" />
@@ -190,6 +212,7 @@ export function Navbar() {
                 size="icon"
                 onClick={toggleTheme}
                 aria-label="Toggle theme"
+                className={isTransparent ? 'text-white/80 hover:text-white hover:bg-white/10' : ''}
               >
                 {theme === 'dark' ? (
                   <Sun className="h-5 w-5" />
@@ -200,9 +223,9 @@ export function Navbar() {
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="flex items-center rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                  <button className="flex items-center rounded-full focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2">
                     <Avatar className="h-8 w-8">
-                      <AvatarFallback className="bg-indigo-100 text-xs font-semibold text-indigo-700">
+                      <AvatarFallback className="bg-amber-100 text-xs font-semibold text-amber-700">
                         {getInitials(user?.name ?? '?')}
                       </AvatarFallback>
                     </Avatar>
@@ -212,7 +235,7 @@ export function Navbar() {
                   <div className="px-2 py-1.5">
                     <p className="text-sm font-medium">{user?.name}</p>
                     <p className="text-xs text-muted-foreground">{user?.email}</p>
-                    <p className="mt-0.5 text-xs font-medium text-indigo-600">
+                    <p className="mt-0.5 text-xs font-medium text-amber-600">
                       {user?.role}
                     </p>
                   </div>
@@ -306,6 +329,7 @@ export function Navbar() {
                 size="icon"
                 onClick={toggleTheme}
                 aria-label="Toggle theme"
+                className={isTransparent ? 'text-white/80 hover:text-white hover:bg-white/10' : ''}
               >
                 {theme === 'dark' ? (
                   <Sun className="h-5 w-5" />
@@ -317,10 +341,19 @@ export function Navbar() {
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate('/login')}
+                className={isTransparent ? 'text-white/80 hover:text-white hover:bg-white/10' : ''}
               >
                 Sign In
               </Button>
-              <Button size="sm" onClick={() => navigate('/register')}>
+              <Button
+                size="sm"
+                onClick={() => navigate('/register')}
+                className={
+                  isTransparent
+                    ? 'bg-white text-orange-600 hover:bg-white/90 font-semibold'
+                    : 'bg-amber-500 text-white hover:bg-amber-600'
+                }
+              >
                 Sign Up
               </Button>
             </div>
@@ -329,12 +362,22 @@ export function Navbar() {
           {/* Mobile hamburger */}
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="md:hidden">
-                {mobileOpen ? (
-                  <X className="h-5 w-5" />
-                ) : (
-                  <Menu className="h-5 w-5" />
-                )}
+              <Button
+                variant="ghost"
+                size="icon"
+                className={`md:hidden ${isTransparent ? 'text-white hover:bg-white/10' : ''}`}
+              >
+                <AnimatePresence mode="wait">
+                  {mobileOpen ? (
+                    <motion.span key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.15 }}>
+                      <X className="h-5 w-5" />
+                    </motion.span>
+                  ) : (
+                    <motion.span key="menu" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} transition={{ duration: 0.15 }}>
+                      <Menu className="h-5 w-5" />
+                    </motion.span>
+                  )}
+                </AnimatePresence>
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-64">
@@ -348,7 +391,7 @@ export function Navbar() {
                         navigate('/events/create')
                         setMobileOpen(false)
                       }}
-                      className="text-left text-sm font-medium text-indigo-600"
+                      className="text-left text-sm font-medium text-amber-600"
                     >
                       + Create Event
                     </button>
@@ -373,7 +416,7 @@ export function Navbar() {
                     </Link>
                     <Link
                       to="/register"
-                      className="text-sm font-medium text-indigo-600"
+                      className="text-sm font-medium text-amber-600"
                       onClick={() => setMobileOpen(false)}
                     >
                       Sign Up
@@ -385,6 +428,6 @@ export function Navbar() {
           </Sheet>
         </div>
       </div>
-    </header>
+    </motion.header>
   )
 }

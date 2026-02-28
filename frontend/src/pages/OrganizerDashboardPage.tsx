@@ -308,7 +308,7 @@ export function OrganizerDashboardPage() {
           icon={Calendar}
           label="Total Events"
           value={dashboard.totalEvents}
-          color="bg-indigo-500"
+          color="bg-amber-500"
         />
         <StatCard
           icon={Users}

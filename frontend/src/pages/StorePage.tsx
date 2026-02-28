@@ -150,7 +150,7 @@ export function StorePage() {
       {/* Header */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2.5">
-          <ShoppingBag className="h-5 w-5 text-indigo-600" />
+          <ShoppingBag className="h-5 w-5 text-amber-600" />
           <div>
             <h1 className="text-xl font-bold text-foreground sm:text-2xl">Loyalty Store</h1>
             <p className="text-xs text-muted-foreground sm:text-sm">
@@ -185,8 +185,8 @@ export function StorePage() {
                 onClick={() => setSelectedCategory(cat.value)}
                 className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
                   selectedCategory === cat.value
-                    ? 'border-indigo-600 bg-indigo-600 text-white'
-                    : 'border-border bg-card text-muted-foreground hover:border-indigo-400 hover:text-foreground'
+                    ? 'border-amber-600 bg-amber-600 text-white'
+                    : 'border-border bg-card text-muted-foreground hover:border-amber-400 hover:text-foreground'
                 }`}
               >
                 {cat.icon}

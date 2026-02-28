@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { Calendar, MapPin, Heart } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { StatusBadge } from './StatusBadge'
 import { cn, formatDateRange, formatCurrency } from '@/lib/utils'
 import { useMyFavoriteIds, useToggleFavorite } from '@/api/favorites'
@@ -8,12 +9,12 @@ import type { Event } from '@/types'
 
 // Category-based gradient backgrounds used when no image is uploaded
 const CATEGORY_GRADIENTS: Record<string, string> = {
-  Conference: 'from-blue-600 to-indigo-700',
+  Conference: 'from-blue-500 to-blue-700',
   Workshop:   'from-emerald-500 to-teal-600',
   Concert:    'from-purple-600 to-pink-600',
-  Sports:     'from-orange-500 to-red-600',
-  Networking: 'from-cyan-500 to-blue-600',
-  Other:      'from-slate-500 to-slate-700',
+  Sports:     'from-orange-400 to-red-500',
+  Networking: 'from-amber-400 to-orange-500',
+  Other:      'from-stone-400 to-stone-600',
 }
 
 interface Props {
@@ -37,23 +38,25 @@ function HeartButton({ event }: { event: Event }) {
   }
 
   return (
-    <button
+    <motion.button
       onClick={handleClick}
       disabled={isPending}
       aria-label={isFaved ? 'Remove from favourites' : 'Save to favourites'}
+      whileHover={{ scale: 1.15 }}
+      whileTap={{ scale: 0.9 }}
       className={cn(
-        'flex h-7 w-7 items-center justify-center rounded-full transition-all',
-        'bg-white/90 shadow-sm backdrop-blur-sm hover:scale-110 active:scale-95',
+        'flex h-8 w-8 items-center justify-center rounded-full transition-all',
+        'bg-white/90 shadow-md backdrop-blur-sm',
         isPending && 'opacity-50'
       )}
     >
       <Heart
         className={cn(
-          'h-3.5 w-3.5 transition-colors',
+          'h-4 w-4 transition-colors',
           isFaved ? 'fill-rose-500 text-rose-500' : 'text-slate-500'
         )}
       />
-    </button>
+    </motion.button>
   )
 }
 
@@ -81,28 +84,30 @@ export function EventCard({ event }: Props) {
     : isStartingSoon
     ? { label: 'Starts soon', classes: 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400' }
     : isNew
-    ? { label: 'New',         classes: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400' }
+    ? { label: 'New',         classes: 'bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400' }
     : null
 
   return (
     <Link
       to={`/events/${event.id}`}
       className={cn(
-        'group block overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-border transition-shadow duration-200 hover:shadow-md',
+        'group block overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border transition-all duration-300 hover:shadow-xl hover:-translate-y-1',
         isDimmed && 'opacity-60 grayscale'
       )}
     >
       {/* Hero image */}
-      <div className="relative h-44 w-full overflow-hidden sm:h-48">
+      <div className="relative h-48 w-full overflow-hidden sm:h-52">
         {event.imageUrl ? (
-          <img
+          <motion.img
             src={event.imageUrl}
             alt={event.title}
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            className="h-full w-full object-cover"
+            whileHover={{ scale: 1.07 }}
+            transition={{ duration: 0.4, ease: 'easeOut' }}
           />
         ) : (
           <div className={`flex h-full w-full items-center justify-center bg-gradient-to-br ${gradient}`}>
-            <span className="select-none text-5xl font-bold text-white/20">
+            <span className="select-none text-6xl font-extrabold text-white/20">
               {event.categoryName.charAt(0)}
             </span>
           </div>
@@ -122,22 +127,22 @@ export function EventCard({ event }: Props) {
       {/* Card body */}
       <div className="p-4">
         {pill && (
-          <span className={cn('mb-2 inline-block rounded-full px-2.5 py-0.5 text-xs font-medium', pill.classes)}>
+          <span className={cn('mb-2 inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold', pill.classes)}>
             {pill.label}
           </span>
         )}
 
-        <h3 className="mb-2 line-clamp-2 text-sm font-semibold leading-snug text-card-foreground sm:text-base">
+        <h3 className="mb-2 line-clamp-2 text-sm font-bold leading-snug text-card-foreground sm:text-base">
           {event.title}
         </h3>
 
-        <div className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-card-foreground sm:text-sm">
-          <Calendar className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        <div className="mb-1 flex items-center gap-1.5 text-xs font-medium text-muted-foreground sm:text-sm">
+          <Calendar className="h-3.5 w-3.5 shrink-0 text-amber-500" />
           <span className="truncate">{formatDateRange(event.startDate, event.endDate)}</span>
         </div>
 
         <div className="mb-3 flex items-center gap-1.5 text-xs text-muted-foreground sm:text-sm">
-          <MapPin className="h-3.5 w-3.5 shrink-0" />
+          <MapPin className="h-3.5 w-3.5 shrink-0 text-amber-500" />
           <span className="truncate">{event.location}</span>
         </div>
 

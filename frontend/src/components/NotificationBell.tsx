@@ -43,7 +43,7 @@ export function NotificationBell() {
           {unread > 0 && (
             <button
               onClick={() => markAllRead.mutate()}
-              className="text-xs text-indigo-600 hover:underline"
+              className="text-xs text-amber-600 hover:underline"
             >
               Mark all read
             </button>
@@ -56,7 +56,7 @@ export function NotificationBell() {
           notifications.slice(0, 8).map((n) => (
             <DropdownMenuItem
               key={n.id}
-              className={`flex flex-col items-start gap-0.5 px-3 py-2 ${!n.isRead ? 'bg-indigo-50' : ''}`}
+              className={`flex flex-col items-start gap-0.5 px-3 py-2 ${!n.isRead ? 'bg-amber-50' : ''}`}
               onClick={() => handleClick(n.id, n.eventId)}
             >
               <span className="text-sm font-medium leading-tight">{n.title}</span>

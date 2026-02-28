@@ -268,19 +268,19 @@ export function EventDetailPage() {
 
         <div className="mb-5 grid gap-2.5 sm:grid-cols-2">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Calendar className="h-4 w-4 shrink-0 text-indigo-500" />
+            <Calendar className="h-4 w-4 shrink-0 text-amber-500" />
             <span>{formatDateRange(event.startDate, event.endDate)}</span>
           </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <MapPin className="h-4 w-4 shrink-0 text-indigo-500" />
+            <MapPin className="h-4 w-4 shrink-0 text-amber-500" />
             <span>{event.location}</span>
           </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <DollarSign className="h-4 w-4 shrink-0 text-indigo-500" />
+            <DollarSign className="h-4 w-4 shrink-0 text-amber-500" />
             <span className="font-medium">{formatCurrency(event.price)}</span>
           </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Users className="h-4 w-4 shrink-0 text-indigo-500" />
+            <Users className="h-4 w-4 shrink-0 text-amber-500" />
             <span>
               {event.bookingCount}/{event.capacity} booked
               {spotsLeft <= 10 &&
@@ -301,7 +301,7 @@ export function EventDetailPage() {
             className="flex items-center gap-2 hover:opacity-80"
           >
             <Avatar className="h-8 w-8">
-              <AvatarFallback className="bg-indigo-100 text-xs text-indigo-700">
+              <AvatarFallback className="bg-amber-100 text-xs text-amber-700">
                 {getInitials(event.createdByName)}
               </AvatarFallback>
             </Avatar>
@@ -485,7 +485,7 @@ export function EventDetailPage() {
             prose-code:rounded prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:text-foreground prose-code:before:content-none prose-code:after:content-none
             prose-pre:bg-muted prose-pre:text-foreground
             prose-ul:text-foreground prose-ol:text-foreground prose-li:text-foreground
-            prose-a:text-indigo-600 prose-a:no-underline hover:prose-a:underline
+            prose-a:text-amber-600 prose-a:no-underline hover:prose-a:underline
             prose-blockquote:border-border prose-blockquote:text-muted-foreground
             prose-hr:border-border
           ">
@@ -496,7 +496,7 @@ export function EventDetailPage() {
               {event.tags.map((tag) => (
                 <span
                   key={tag}
-                  className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-600"
+                  className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-600"
                 >
                   {tag}
                 </span>
@@ -562,7 +562,7 @@ export function EventDetailPage() {
                       href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(event.location)}&travelmode=${mode}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-3 text-sm text-indigo-600 hover:text-indigo-800 hover:underline"
+                      className="flex items-center gap-3 text-sm text-amber-600 hover:text-amber-800 hover:underline"
                     >
                       <Icon className="h-5 w-5 shrink-0" />
                       {label}
@@ -679,7 +679,7 @@ export function EventDetailPage() {
                 key={review.id}
                 className={`rounded-xl border p-5 ${
                   review.isPinned
-                    ? 'border-indigo-200 bg-indigo-50/30 dark:border-indigo-800 dark:bg-indigo-950/20'
+                    ? 'border-amber-200 bg-amber-50/30 dark:border-amber-800 dark:bg-amber-950/20'
                     : 'border-border bg-card'
                 }`}
               >
@@ -708,7 +708,7 @@ export function EventDetailPage() {
                       </div>
                     </div>
                     {review.isPinned && (
-                      <span className="ml-2 flex items-center gap-1 rounded-full bg-indigo-100 px-2 py-0.5 text-xs text-indigo-600">
+                      <span className="ml-2 flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-600">
                         <Pin className="h-3 w-3" /> Pinned
                       </span>
                     )}
@@ -768,7 +768,7 @@ export function EventDetailPage() {
                           replyTarget === review.id ? null : review.id
                         )
                       }
-                      className="hover:text-indigo-600"
+                      className="hover:text-amber-600"
                     >
                       Reply
                     </button>

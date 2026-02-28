@@ -197,7 +197,7 @@ export function EventForm({
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="flex h-40 w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border bg-muted/40 text-muted-foreground transition-colors hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-500"
+            className="flex h-40 w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border bg-muted/40 text-muted-foreground transition-colors hover:border-amber-300 hover:bg-amber-50 hover:text-amber-500"
           >
             <ImagePlus className="h-8 w-8" />
             <span className="text-sm font-medium">Upload event image</span>
@@ -368,7 +368,7 @@ export function EventForm({
           {tags.map((tag) => (
             <label
               key={tag.id}
-              className="flex cursor-pointer items-center gap-1.5 rounded-full border border-border px-3 py-1 text-sm transition-colors hover:border-indigo-300 has-[:checked]:border-indigo-400 has-[:checked]:bg-indigo-50 has-[:checked]:text-indigo-700 dark:has-[:checked]:bg-indigo-950/50 dark:has-[:checked]:text-indigo-400"
+              className="flex cursor-pointer items-center gap-1.5 rounded-full border border-border px-3 py-1 text-sm transition-colors hover:border-amber-300 has-[:checked]:border-amber-400 has-[:checked]:bg-amber-50 has-[:checked]:text-amber-700 dark:has-[:checked]:bg-amber-950/50 dark:has-[:checked]:text-amber-400"
             >
               <Checkbox
                 checked={watchedTagIds.includes(tag.id)}

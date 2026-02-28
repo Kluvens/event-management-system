@@ -97,7 +97,7 @@ export function ProfilePage() {
 
   if (!user) return null
 
-  const tierClass = tierColors[user.loyaltyTier] ?? 'bg-indigo-600 text-white'
+  const tierClass = tierColors[user.loyaltyTier] ?? 'bg-amber-600 text-white'
 
   return (
     <div className="container mx-auto max-w-2xl px-4 py-10">
@@ -107,14 +107,14 @@ export function ProfilePage() {
         <CardHeader className="pb-4">
           <div className="flex items-center gap-4">
             <Avatar className="h-16 w-16">
-              <AvatarFallback className="bg-indigo-100 text-xl font-semibold text-indigo-700">
+              <AvatarFallback className="bg-amber-100 text-xl font-semibold text-amber-700">
                 {getInitials(user.name)}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1">
               <CardTitle className="text-xl">{user.name}</CardTitle>
               <p className="text-sm text-muted-foreground">{user.email}</p>
-              <p className="mt-0.5 text-xs font-medium text-indigo-600">{user.role}</p>
+              <p className="mt-0.5 text-xs font-medium text-amber-600">{user.role}</p>
             </div>
             {!editing && (
               <Button variant="outline" size="sm" onClick={onEdit}>
@@ -204,7 +204,7 @@ export function ProfilePage() {
                     href={user.website}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm text-indigo-600 hover:underline"
+                    className="text-sm text-amber-600 hover:underline"
                   >
                     {user.website}
                   </a>

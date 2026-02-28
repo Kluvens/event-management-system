@@ -130,7 +130,7 @@ export function EventFilters({ filters, onChange }: Props) {
             <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" />
             Tags
             {selectedTagIds.length > 0 && (
-              <span className="ml-1 rounded-full bg-indigo-100 px-1.5 py-0.5 text-xs font-medium text-indigo-700">
+              <span className="ml-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-700">
                 {selectedTagIds.length}
               </span>
             )}
@@ -243,7 +243,7 @@ export function EventFilters({ filters, onChange }: Props) {
           <SlidersHorizontal className="h-4 w-4" />
           Filters
           {advancedFilterCount > 0 && (
-            <span className="rounded-full bg-indigo-100 px-1.5 py-0.5 text-xs font-medium text-indigo-700">
+            <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-700">
               {advancedFilterCount}
             </span>
           )}

@@ -64,7 +64,7 @@ export function getInitials(name: string): string {
 
 export const STATUS_CONFIG: Record<EventStatus, { label: string; className: string }> = {
   Draft:     { label: 'Draft',     className: 'border-slate-200 bg-slate-50 text-slate-600' },
-  Published: { label: 'Published', className: 'border-indigo-200 bg-indigo-50 text-indigo-700' },
+  Published: { label: 'Published', className: 'border-amber-200 bg-amber-50 text-amber-700' },
   Live:      { label: 'Live',      className: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
   SoldOut:   { label: 'Sold Out',  className: 'border-amber-200 bg-amber-50 text-amber-700' },
   Completed: { label: 'Completed', className: 'border-slate-200 bg-slate-100 text-slate-600' },

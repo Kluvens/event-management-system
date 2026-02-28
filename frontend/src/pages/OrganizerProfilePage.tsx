@@ -47,7 +47,7 @@ export function OrganizerProfilePage() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-center gap-4">
             <Avatar className="h-16 w-16">
-              <AvatarFallback className="bg-indigo-100 text-xl font-bold text-indigo-700">
+              <AvatarFallback className="bg-amber-100 text-xl font-bold text-amber-700">
                 {getInitials(profile.name)}
               </AvatarFallback>
             </Avatar>
@@ -92,7 +92,7 @@ export function OrganizerProfilePage() {
                 href={profile.website}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-indigo-600"
+                className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-amber-600"
               >
                 <Globe className="h-3.5 w-3.5" />
                 Website
@@ -103,7 +103,7 @@ export function OrganizerProfilePage() {
                 href={`https://x.com/${profile.twitterHandle.replace(/^@/, '')}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-indigo-600"
+                className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-amber-600"
               >
                 <X className="h-3.5 w-3.5" />
                 {profile.twitterHandle}
@@ -114,7 +114,7 @@ export function OrganizerProfilePage() {
                 href={`https://instagram.com/${profile.instagramHandle.replace(/^@/, '')}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-indigo-600"
+                className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-amber-600"
               >
                 <Link2 className="h-3.5 w-3.5" />
                 {profile.instagramHandle}
@@ -138,7 +138,7 @@ export function OrganizerProfilePage() {
             <Link
               key={ev.id}
               to={`/events/${ev.id}`}
-              className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:border-indigo-200 hover:shadow-md"
+              className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:border-amber-200 hover:shadow-md"
             >
               <div>
                 <p className="font-medium text-slate-900">{ev.title}</p>

@@ -29,7 +29,7 @@ export function ForgotPasswordPage() {
   }
 
   const inputClass =
-    'border-slate-700 bg-slate-800 text-white placeholder:text-slate-500 focus:border-indigo-500'
+    'border-slate-700 bg-slate-800 text-white placeholder:text-slate-500 focus:border-amber-500'
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
@@ -57,7 +57,7 @@ export function ForgotPasswordPage() {
 
       <Button
         type="submit"
-        className="w-full bg-indigo-600 hover:bg-indigo-500"
+        className="w-full bg-amber-600 hover:bg-amber-500"
         disabled={forgot.isPending}
       >
         {forgot.isPending ? 'Sending…' : 'Send Reset Code'}
@@ -65,7 +65,7 @@ export function ForgotPasswordPage() {
 
       <p className="text-center text-sm text-slate-400">
         Remember your password?{' '}
-        <Link to="/login" className="font-medium text-indigo-400 hover:text-indigo-300">
+        <Link to="/login" className="font-medium text-amber-400 hover:text-amber-300">
           Sign in
         </Link>
       </p>

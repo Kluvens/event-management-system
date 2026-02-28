@@ -163,7 +163,7 @@ export function MarkdownEditor({ id, value, onChange, placeholder, error }: Prop
               prose-pre:bg-muted prose-pre:text-foreground
               prose-ul:text-foreground prose-ol:text-foreground
               prose-li:text-foreground
-              prose-a:text-indigo-600 prose-a:no-underline hover:prose-a:underline
+              prose-a:text-amber-600 prose-a:no-underline hover:prose-a:underline
               prose-blockquote:border-border prose-blockquote:text-muted-foreground
               prose-hr:border-border
             ">
