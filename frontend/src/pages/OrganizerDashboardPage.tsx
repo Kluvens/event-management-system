@@ -575,6 +575,42 @@ export function OrganizerDashboardPage() {
                 <StatCard icon={CheckSquare}   label="Upcoming Events"  value={nonDraftUpcoming.length}                   color="bg-sky-500"     />
               </div>
 
+              {/* Draft events banner */}
+              {draftEvents.length > 0 && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+                        {draftEvents.length} Draft Event{draftEvents.length > 1 ? 's' : ''} — not yet published
+                      </h3>
+                      <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-400">
+                        Only you can see these. Publish when ready to make them visible to attendees.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setView('events')}
+                      className="shrink-0 text-xs font-medium text-amber-600 hover:underline"
+                    >
+                      View all
+                    </button>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {draftEvents.slice(0, 3).map((ev) => (
+                      <Link
+                        key={ev.eventId}
+                        to={`/events/${ev.eventId}/edit`}
+                        className="flex items-center gap-1.5 rounded-lg border border-amber-200 dark:border-amber-800 bg-white dark:bg-stone-900 px-3 py-1.5 text-xs transition-colors hover:bg-amber-100 dark:hover:bg-stone-800"
+                      >
+                        <Pencil className="h-3 w-3 text-amber-600" />
+                        <span className="max-w-[160px] truncate font-medium text-stone-800 dark:text-stone-100">
+                          {ev.title}
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Revenue chart + Ticket summary */}
               <div className="grid grid-cols-3 gap-5">
 

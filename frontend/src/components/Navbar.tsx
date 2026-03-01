@@ -1,34 +1,7 @@
-import { useState, useEffect } from 'react'
-import { Link, useNavigate, useLocation } from 'react-router-dom'
-import {
-  Menu,
-  X,
-  Zap,
-  LogOut,
-  LayoutDashboard,
-  Ticket,
-  ShieldCheck,
-  Plus,
-  Heart,
-  Sun,
-  Moon,
-  ShoppingBag,
-  Link2,
-  UserCircle,
-} from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Button } from '@/components/ui/button'
+import { useUpdateProfile } from '@/api/organizers'
+import { NotificationBell } from '@/components/NotificationBell'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Separator } from '@/components/ui/separator'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -36,16 +9,43 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Separator } from '@/components/ui/separator'
+import {
   Sheet,
   SheetContent,
   SheetTrigger,
 } from '@/components/ui/sheet'
-import { signOut } from 'aws-amplify/auth'
-import { useAuthStore } from '@/stores/authStore'
-import { getInitials } from '@/lib/utils'
-import { NotificationBell } from '@/components/NotificationBell'
 import { useTheme } from '@/contexts/ThemeContext'
-import { useUpdateProfile } from '@/api/organizers'
+import { getInitials } from '@/lib/utils'
+import { useAuthStore } from '@/stores/authStore'
+import { signOut } from 'aws-amplify/auth'
+import { AnimatePresence, motion } from 'framer-motion'
+import {
+  Heart,
+  LayoutDashboard,
+  Link2,
+  LogOut,
+  Menu,
+  Moon,
+  Plus,
+  ShieldCheck,
+  ShoppingBag,
+  Sun,
+  Ticket,
+  UserCircle,
+  X,
+  Zap,
+} from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 
 export function Navbar() {
@@ -225,11 +225,7 @@ export function Navbar() {
                 <DropdownMenuTrigger asChild>
                   <button className="flex items-center rounded-full focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2">
                     <Avatar className="h-8 w-8">
-                      <AvatarFallback className={`text-xs font-semibold ${
-                        isTransparent
-                          ? 'bg-white/20 text-white'
-                          : 'bg-amber-100 text-amber-700'
-                      }`}>
+                    <AvatarFallback className={`text-xs font-semibold ${ isTransparent ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-700'}`}>
                         {getInitials(user?.name ?? '?')}
                       </AvatarFallback>
                     </Avatar>

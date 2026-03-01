@@ -615,7 +615,7 @@ export function EventDetailPage() {
             announcements.map((a) => (
               <div
                 key={a.id}
-                className="rounded-xl border border-slate-200 bg-white p-5"
+                className="rounded-xl border border-border bg-card p-5"
               >
                 <div className="mb-1 flex items-start justify-between">
                   <h4 className="font-semibold text-foreground">{a.title}</h4>

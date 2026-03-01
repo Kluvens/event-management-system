@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useForm, Controller } from 'react-hook-form'
+import { DateTimePicker } from '@/components/DateTimePicker'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { ImagePlus, X, Loader2 } from 'lucide-react'
@@ -286,10 +287,17 @@ export function EventForm({
           <Label htmlFor="startDate" className={lbl}>
             Start Date &amp; Time
           </Label>
-          <Input
-            id="startDate"
-            type="datetime-local"
-            {...register('startDate')}
+          <Controller
+            control={control}
+            name="startDate"
+            render={({ field }) => (
+              <DateTimePicker
+                id="startDate"
+                value={field.value}
+                onChange={field.onChange}
+                placeholder="Select start date & time"
+              />
+            )}
           />
           {errors.startDate && (
             <p className={err}>{errors.startDate.message}</p>
@@ -299,10 +307,17 @@ export function EventForm({
           <Label htmlFor="endDate" className={lbl}>
             End Date &amp; Time
           </Label>
-          <Input
-            id="endDate"
-            type="datetime-local"
-            {...register('endDate')}
+          <Controller
+            control={control}
+            name="endDate"
+            render={({ field }) => (
+              <DateTimePicker
+                id="endDate"
+                value={field.value}
+                onChange={field.onChange}
+                placeholder="Select end date & time"
+              />
+            )}
           />
           {errors.endDate && <p className={err}>{errors.endDate.message}</p>}
         </div>

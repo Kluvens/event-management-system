@@ -1,4 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom'
+import { ArrowLeft } from 'lucide-react'
 import { EventForm } from '@/features/events/EventForm'
 import { useEvent, useUpdateEvent, usePublishEvent } from '@/api/events'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
@@ -35,6 +36,13 @@ export function EditEventPage() {
 
   return (
     <div className="container mx-auto max-w-2xl px-4 py-8">
+      <button
+        onClick={() => navigate('/dashboard')}
+        className="mb-6 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to Dashboard
+      </button>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-foreground">Edit Event</h1>
         <p className="mt-1 text-sm text-muted-foreground">
