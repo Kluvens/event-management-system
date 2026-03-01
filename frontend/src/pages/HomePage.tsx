@@ -21,16 +21,19 @@ import { EventFilters } from '@/components/EventFilters'
 import { useUserLocation } from '@/hooks/useUserLocation'
 import type { EventFilters as Filters } from '@/types'
 
-// Category quick-filters for the hero pill row
-const CATEGORIES = [
-  { label: 'Music',       icon: Music },
-  { label: 'Sports',      icon: Trophy },
-  { label: 'Food',        icon: Utensils },
-  { label: 'Arts',        icon: Palette },
-  { label: 'Tech',        icon: Cpu },
-  { label: 'Networking',  icon: Users },
-  { label: 'Concerts',    icon: Mic2 },
-  { label: 'Fitness',     icon: Dumbbell },
+// Category quick-filters for the hero pill row.
+// Each filter maps to actual DB IDs:
+//   Categories: Conference(1) Workshop(2) Concert(3) Sports(4) Networking(5) Other(6)
+//   Tags: Music(1) Technology(2) Business(3) Arts(4) Food&Drink(5) Health&Wellness(6)
+const CATEGORIES: { label: string; icon: React.ElementType; filter: Partial<Filters> }[] = [
+  { label: 'Music',      icon: Music,    filter: { tagIds: [1] } },
+  { label: 'Sports',     icon: Trophy,   filter: { categoryId: 4 } },
+  { label: 'Food',       icon: Utensils, filter: { tagIds: [5] } },
+  { label: 'Arts',       icon: Palette,  filter: { tagIds: [4] } },
+  { label: 'Tech',       icon: Cpu,      filter: { tagIds: [2] } },
+  { label: 'Networking', icon: Users,    filter: { categoryId: 5 } },
+  { label: 'Concerts',   icon: Mic2,     filter: { categoryId: 3 } },
+  { label: 'Fitness',    icon: Dumbbell, filter: { tagIds: [6] } },
 ]
 
 function EventCardSkeleton() {
@@ -105,20 +108,30 @@ export function HomePage() {
     scrollToAll()
   }
 
-  function handleCategoryClick(label: string) {
-    const next = activeCategory === label ? null : label
-    setActiveCategory(next)
-    setFilters((f) => ({ ...f, search: next ?? undefined }))
-    scrollToAll()
-  }
+  // Sync activeCategory with filters: clear pill highlight when EventFilters
+  // removes the relevant categoryId / tagIds (e.g. via "Clear all")
+  useEffect(() => {
+    if (!filters.categoryId && !filters.tagIds?.length) {
+      setActiveCategory(null)
+    }
+  }, [filters.categoryId, filters.tagIds])
 
-  const containerVariants = {
-    hidden: {},
-    show: { transition: { staggerChildren: 0.06 } },
-  }
-  const cardVariants = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } },
+  function handleCategoryClick(label: string, filter: Partial<Filters>) {
+    if (activeCategory === label) {
+      // Deselect: strip the category/tag filter the pill added
+      setActiveCategory(null)
+      setFilters((f) => {
+        const { categoryId: _c, tagIds: _t, ...rest } = f
+        return rest
+      })
+    } else {
+      setActiveCategory(label)
+      setFilters((f) => {
+        // Remove any previously active pill filter before applying the new one
+        const { categoryId: _c, tagIds: _t, ...rest } = f
+        return { ...rest, ...filter }
+      })
+    }
   }
 
   return (
@@ -188,16 +201,11 @@ export function HomePage() {
 
             {/* Category pills */}
             <div className="flex flex-wrap justify-center gap-2">
-              {CATEGORIES.map(({ label, icon: Icon }, i) => (
-                <motion.button
+              {CATEGORIES.map(({ label, icon: Icon, filter }) => (
+                <button
                   key={label}
-                  onClick={() => handleCategoryClick(label)}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.3 + i * 0.05, duration: 0.25, type: 'spring', stiffness: 200 }}
-                  whileHover={{ scale: 1.06 }}
-                  whileTap={{ scale: 0.95 }}
-                  className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold transition-all ${
+                  onClick={() => handleCategoryClick(label, filter)}
+                  className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold transition-colors ${
                     activeCategory === label
                       ? 'bg-white text-orange-600 shadow-md'
                       : 'border border-white/30 bg-white/15 text-white hover:bg-white/25 backdrop-blur-sm'
@@ -205,7 +213,7 @@ export function HomePage() {
                 >
                   <Icon className="h-3.5 w-3.5" />
                   {label}
-                </motion.button>
+                </button>
               ))}
             </div>
           </motion.div>
@@ -252,22 +260,13 @@ export function HomePage() {
                 No upcoming events found near {city}.
               </p>
             ) : (
-              <motion.div
-                className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible lg:grid-cols-3 xl:grid-cols-4"
-                variants={containerVariants}
-                initial="hidden"
-                animate="show"
-              >
+              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible lg:grid-cols-3 xl:grid-cols-4">
                 {nearbyEvents.slice(0, 8).map((event) => (
-                  <motion.div
-                    key={event.id}
-                    className="w-64 shrink-0 sm:w-auto"
-                    variants={cardVariants}
-                  >
+                  <div key={event.id} className="w-64 shrink-0 sm:w-auto">
                     <EventCard event={event} />
-                  </motion.div>
+                  </div>
                 ))}
-              </motion.div>
+              </div>
             )}
           </div>
         </section>
@@ -301,12 +300,7 @@ export function HomePage() {
             Failed to load events. Please try again.
           </div>
         ) : events.length === 0 ? (
-          <motion.div
-            className="flex flex-col items-center justify-center py-20 text-center"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.3 }}
-          >
+          <div className="flex flex-col items-center justify-center py-20 text-center">
             <div className="mb-4 rounded-full bg-amber-50 p-6 dark:bg-amber-950/30">
               <svg
                 className="h-8 w-8 text-amber-400"
@@ -328,21 +322,14 @@ export function HomePage() {
             <p className="text-sm text-muted-foreground">
               Try adjusting your filters or search terms.
             </p>
-          </motion.div>
+          </div>
         ) : (
           <>
-            <motion.div
-              className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-              variants={containerVariants}
-              initial="hidden"
-              animate="show"
-            >
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {events.map((event) => (
-                <motion.div key={event.id} variants={cardVariants}>
-                  <EventCard event={event} />
-                </motion.div>
+                <EventCard key={event.id} event={event} />
               ))}
-            </motion.div>
+            </div>
 
             {/* Infinite scroll sentinel */}
             <div ref={sentinelRef} className="mt-6" />

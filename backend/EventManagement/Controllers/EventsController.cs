@@ -55,13 +55,19 @@ public class EventsController(AppDbContext db, ICognitoUserResolver resolver)
         query = ApplyVisibilityFilter(query, userId, isAdmin, isSuperAdmin);
 
         if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.ToLower();
             query = query.Where(e =>
-                e.Title.Contains(search) ||
-                e.Description.Contains(search) ||
-                e.Location.Contains(search));
+                e.Title.ToLower().Contains(term) ||
+                e.Description.ToLower().Contains(term) ||
+                e.Location.ToLower().Contains(term) ||
+                e.Category.Name.ToLower().Contains(term) ||
+                e.CreatedBy.Name.ToLower().Contains(term) ||
+                e.EventTags.Any(et => et.Tag.Name.ToLower().Contains(term)));
+        }
 
         if (!string.IsNullOrWhiteSpace(location))
-            query = query.Where(e => e.Location.Contains(location));
+            query = query.Where(e => e.Location.ToLower().Contains(location.ToLower()));
 
         if (categoryId.HasValue)
             query = query.Where(e => e.CategoryId == categoryId.Value);
@@ -499,6 +505,7 @@ public class EventsController(AppDbContext db, ICognitoUserResolver resolver)
 
         var confirmed  = ev.Bookings.Count(b => b.Status == StatusConfirmed);
         var cancelled  = ev.Bookings.Count(b => b.Status == StatusCancelled);
+        var checkedIn  = ev.Bookings.Count(b => b.IsCheckedIn);
         var revenue    = confirmed * ev.Price;
         var avgRating  = ev.Reviews.Count > 0 ? ev.Reviews.Average(r => r.Rating) : 0.0;
         var waitlist   = ev.WaitlistEntries.Count;
@@ -514,8 +521,9 @@ public class EventsController(AppDbContext db, ICognitoUserResolver resolver)
 
         return Ok(new EventAnalyticsResponse(
             ev.Id, ev.Title, ev.Capacity,
-            confirmed, cancelled, waitlist,
+            confirmed, cancelled, waitlist, checkedIn,
             ev.Capacity > 0 ? (double)confirmed / ev.Capacity * 100 : 0,
+            confirmed > 0 ? (double)checkedIn / confirmed * 100 : 0,
             revenue, avgRating, ev.Reviews.Count, daily));
     }
 

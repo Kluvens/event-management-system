@@ -1,10 +1,20 @@
 import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { Calendar, MapPin, QrCode, CalendarPlus, Printer, Ticket } from 'lucide-react'
+import {
+  Calendar,
+  MapPin,
+  QrCode,
+  CalendarPlus,
+  Printer,
+  Ticket,
+  CheckCircle2,
+  Clock,
+  XCircle,
+  ChevronRight,
+  Star,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Dialog,
   DialogContent,
@@ -18,6 +28,8 @@ import { formatDate, formatCurrency } from '@/lib/utils'
 import { QRCodeSVG } from 'qrcode.react'
 import type { Booking } from '@/types'
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -27,29 +39,182 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url)
 }
 
-function getBookingLabel(b: Booking): string {
-  if (b.status === 'Cancelled') return 'Cancelled by You'
+function getLabel(b: Booking): { text: string } {
+  if (b.status === 'Cancelled') return { text: 'Cancelled' }
   const now = Date.now()
-  const start = new Date(b.eventStartDate).getTime()
-  const end = new Date(b.eventEndDate).getTime()
-  if (end < now) return 'Event Completed'
-  if (start <= now) return 'Happening Now'
-  return 'Upcoming'
+  if (new Date(b.eventEndDate).getTime() < now) return { text: 'Completed' }
+  if (new Date(b.eventStartDate).getTime() <= now) return { text: 'Happening Now' }
+  return { text: 'Upcoming' }
 }
 
-function getLabelClass(b: Booking): string {
-  if (b.status === 'Cancelled') return 'border-red-200 bg-red-50 text-red-600'
-  const now = Date.now()
-  if (new Date(b.eventEndDate).getTime() < now)
-    return 'border-border bg-muted text-muted-foreground'
-  if (new Date(b.eventStartDate).getTime() <= now)
-    return 'border-emerald-200 bg-emerald-50 text-emerald-700'
-  return 'border-amber-200 bg-amber-50 text-amber-700'
+const CARD_ACCENTS = [
+  'border-l-amber-400',
+  'border-l-purple-500',
+  'border-l-blue-500',
+  'border-l-emerald-400',
+  'border-l-rose-400',
+  'border-l-cyan-400',
+]
+
+type TabKey = 'upcoming' | 'past' | 'cancelled'
+
+const TABS: { key: TabKey; label: string; icon: React.ElementType }[] = [
+  { key: 'upcoming',  label: 'Upcoming',  icon: Clock        },
+  { key: 'past',      label: 'Past',      icon: CheckCircle2 },
+  { key: 'cancelled', label: 'Cancelled', icon: XCircle      },
+]
+
+// ── Booking card ──────────────────────────────────────────────────────────────
+
+function BookingCard({
+  booking,
+  isPast = false,
+  onQr,
+  onCancel,
+}: {
+  booking: Booking
+  isPast?: boolean
+  onQr: (b: Booking) => void
+  onCancel: (b: Booking) => void
+}) {
+  const accent = CARD_ACCENTS[booking.eventId % CARD_ACCENTS.length]
+  const { text: labelText } = getLabel(booking)
+  const canCancel = !isPast && booking.status !== 'Cancelled'
+
+  return (
+    <div className="group overflow-hidden rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 shadow-sm transition-shadow hover:shadow-md">
+      {/* Image banner — only when a real photo exists */}
+      {booking.eventImageUrl && (
+        <div className="relative h-40 w-full overflow-hidden">
+          <img
+            src={booking.eventImageUrl}
+            alt={booking.eventTitle}
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+          />
+          <span className="absolute left-3 top-3 rounded-full bg-black/50 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-sm">
+            {labelText}
+          </span>
+        </div>
+      )}
+
+      <div className={`p-5 ${!booking.eventImageUrl ? `border-l-4 ${accent}` : ''}`}>
+        <div className="flex items-start justify-between gap-3">
+          <Link
+            to={`/events/${booking.eventId}`}
+            className="text-sm font-semibold text-stone-900 dark:text-stone-100 hover:text-amber-600 dark:hover:text-amber-400 transition-colors leading-snug"
+          >
+            {booking.eventTitle}
+          </Link>
+          {!booking.eventImageUrl && (
+            <span className="shrink-0 rounded-full bg-stone-100 dark:bg-stone-800 px-2 py-0.5 text-[10px] font-semibold text-stone-500 dark:text-stone-400">
+              {labelText}
+            </span>
+          )}
+        </div>
+
+        <div className="mt-3 space-y-1.5 text-xs text-stone-500 dark:text-stone-400">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+            {formatDate(booking.eventStartDate, 'EEE, MMM d yyyy · h:mm a')}
+          </div>
+          <div className="flex items-center gap-2">
+            <MapPin className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+            {booking.eventLocation}
+          </div>
+        </div>
+
+        <div className="mt-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-bold text-stone-900 dark:text-stone-100">
+              {formatCurrency(booking.eventPrice)}
+            </span>
+            {booking.pointsEarned > 0 && booking.status !== 'Cancelled' && (
+              <span className="flex items-center gap-0.5 rounded-full bg-amber-50 dark:bg-amber-950/30 px-2 py-0.5 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                <Star className="h-2.5 w-2.5" />
+                +{booking.pointsEarned} pts
+              </span>
+            )}
+          </div>
+          {booking.isCheckedIn && (
+            <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+              <CheckCircle2 className="h-3 w-3" />
+              Checked in
+            </span>
+          )}
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-stone-100 dark:border-stone-800 pt-4">
+          {canCancel && (
+            <>
+              <Button size="sm" variant="outline" className="h-7 gap-1.5 text-xs" onClick={() => onQr(booking)}>
+                <QrCode className="h-3.5 w-3.5" />
+                QR Code
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 gap-1.5 text-xs"
+                onClick={() =>
+                  bookingsApi.downloadIcs(booking.id).then((blob) => downloadBlob(blob, `event-${booking.eventId}.ics`))
+                }
+              >
+                <CalendarPlus className="h-3.5 w-3.5" />
+                Add to Calendar
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="ml-auto h-7 text-xs text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                onClick={() => onCancel(booking)}
+              >
+                Cancel
+              </Button>
+            </>
+          )}
+          {(isPast || booking.status === 'Cancelled') && (
+            <Link
+              to={`/events/${booking.eventId}`}
+              className="ml-auto flex items-center gap-0.5 text-xs font-semibold text-amber-600 dark:text-amber-400 hover:text-amber-700 transition-colors"
+            >
+              {booking.status === 'Cancelled' ? 'View Event' : 'View & Review'}
+              <ChevronRight className="h-3.5 w-3.5" />
+            </Link>
+          )}
+        </div>
+      </div>
+    </div>
+  )
 }
+
+// ── Empty state ───────────────────────────────────────────────────────────────
+
+function EmptyState({ tab }: { tab: TabKey }) {
+  const msgs: Record<TabKey, string> = {
+    upcoming: 'No upcoming bookings.',
+    past: 'No past events yet.',
+    cancelled: 'No cancelled bookings.',
+  }
+  return (
+    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-stone-200 dark:border-stone-800 py-16 text-center">
+      <div className="mb-3 rounded-full bg-stone-100 dark:bg-stone-800 p-4">
+        <Ticket className="h-6 w-6 text-stone-400" />
+      </div>
+      <p className="text-sm font-medium text-stone-500 dark:text-stone-400">{msgs[tab]}</p>
+      {tab === 'upcoming' && (
+        <Button asChild size="sm" variant="outline" className="mt-4">
+          <Link to="/">Browse Events</Link>
+        </Button>
+      )}
+    </div>
+  )
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 export function MyBookingsPage() {
   const { data: bookings = [], isPending } = useMineBookings()
   const cancel = useCancelBooking()
+  const [activeTab, setActiveTab] = useState<TabKey>('upcoming')
   const [qrBooking, setQrBooking] = useState<Booking | null>(null)
   const [cancelTarget, setCancelTarget] = useState<Booking | null>(null)
   const ticketRef = useRef<HTMLDivElement>(null)
@@ -88,161 +253,91 @@ export function MyBookingsPage() {
   const past      = confirmed.filter((b) => new Date(b.eventEndDate).getTime() < now)
   const cancelled = bookings.filter((b) => b.status === 'Cancelled')
 
+  const tabLists: Record<TabKey, Booking[]> = { upcoming, past, cancelled }
+
   if (isPending) return <LoadingSpinner />
 
-  function BookingCard({ booking, isPast = false }: { booking: Booking; isPast?: boolean }) {
-    return (
-      <div className="rounded-xl border border-border bg-card p-4 shadow-sm transition-shadow hover:shadow-md sm:p-5">
-        <div className="mb-3 flex items-start justify-between gap-3">
-          <Link
-            to={`/events/${booking.eventId}`}
-            className="text-sm font-semibold text-card-foreground hover:text-amber-600 sm:text-base"
-          >
-            {booking.eventTitle}
-          </Link>
-          <Badge
-            variant="outline"
-            className={`shrink-0 text-xs ${getLabelClass(booking)}`}
-          >
-            {getBookingLabel(booking)}
-          </Badge>
-        </div>
-
-        <div className="mb-3 space-y-1.5 text-xs text-muted-foreground sm:text-sm">
-          <div className="flex items-center gap-2">
-            <Calendar className="h-3.5 w-3.5 shrink-0" />
-            {formatDate(booking.eventStartDate, 'MMM d, yyyy · h:mm a')}
-          </div>
-          <div className="flex items-center gap-2">
-            <MapPin className="h-3.5 w-3.5 shrink-0" />
-            {booking.eventLocation}
-          </div>
-        </div>
-
-        <div className="mb-4 flex items-center justify-between text-sm">
-          <span className="font-medium text-foreground">
-            {formatCurrency(booking.eventPrice)}
-          </span>
-          {booking.pointsEarned > 0 && booking.status !== 'Cancelled' && (
-            <span className="text-xs font-medium text-amber-600">
-              +{booking.pointsEarned} pts
-            </span>
-          )}
-        </div>
-
-        {booking.isCheckedIn && (
-          <div className="mb-3 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">
-            Checked in
-            {booking.checkedInAt
-              ? ` · ${formatDate(booking.checkedInAt, 'MMM d · h:mm a')}`
-              : ''}
-          </div>
-        )}
-
-        <div className="flex flex-wrap gap-2">
-          {!isPast && booking.status !== 'Cancelled' && (
-            <>
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-1.5"
-                onClick={() => setQrBooking(booking)}
-              >
-                <QrCode className="h-3.5 w-3.5" />
-                QR Code
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-1.5"
-                onClick={() =>
-                  bookingsApi
-                    .downloadIcs(booking.id)
-                    .then((blob) => downloadBlob(blob, `event-${booking.eventId}.ics`))
-                }
-              >
-                <CalendarPlus className="h-3.5 w-3.5" />
-                Add to Calendar
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="text-red-500 hover:text-red-600"
-                onClick={() => setCancelTarget(booking)}
-              >
-                Cancel
-              </Button>
-            </>
-          )}
-          {(isPast || booking.status === 'Cancelled') && (
-            <Button asChild size="sm" variant="outline">
-              <Link to={`/events/${booking.eventId}`}>
-                {booking.status === 'Cancelled' ? 'View Event' : 'View & Review'}
-              </Link>
-            </Button>
-          )}
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="container mx-auto max-w-3xl px-4 py-6 sm:py-8">
-      <div className="mb-6">
-        <h1 className="text-xl font-bold text-foreground sm:text-2xl">My Bookings</h1>
-        <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
-          {upcoming.length} upcoming · {past.length} past · {cancelled.length} cancelled
-        </p>
+    <div className="min-h-screen bg-stone-50 dark:bg-stone-950">
+
+      {/* ── Header ── */}
+      <div className="border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900">
+        <div className="container mx-auto max-w-4xl px-4 py-6">
+          <h1 className="text-xl font-bold text-stone-900 dark:text-stone-100 sm:text-2xl">My Bookings</h1>
+          <p className="mt-1 text-xs text-stone-400 sm:text-sm">
+            All your event tickets in one place
+          </p>
+
+          {/* ── Stat row ── */}
+          <div className="mt-5 grid grid-cols-3 gap-3">
+            {[
+              { label: 'Upcoming',  value: upcoming.length,  icon: Clock,        color: 'text-amber-500',   bg: 'bg-amber-50 dark:bg-amber-950/30'   },
+              { label: 'Attended',  value: past.length,      icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-950/30' },
+              { label: 'Cancelled', value: cancelled.length, icon: XCircle,      color: 'text-rose-500',    bg: 'bg-rose-50 dark:bg-rose-950/30'    },
+            ].map(({ label, value, icon: Icon, color, bg }) => (
+              <div key={label} className={`rounded-2xl ${bg} border border-stone-100 dark:border-stone-800 p-4`}>
+                <div className="flex items-center gap-2">
+                  <Icon className={`h-4 w-4 ${color}`} />
+                  <span className="text-xs font-medium text-stone-500 dark:text-stone-400">{label}</span>
+                </div>
+                <p className="mt-1.5 text-2xl font-bold text-stone-900 dark:text-stone-100">{value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
-      <Tabs defaultValue="upcoming">
-        <TabsList className="mb-4">
-          <TabsTrigger value="upcoming">
-            Upcoming {upcoming.length > 0 && `(${upcoming.length})`}
-          </TabsTrigger>
-          <TabsTrigger value="past">
-            Past {past.length > 0 && `(${past.length})`}
-          </TabsTrigger>
-          <TabsTrigger value="cancelled">
-            Cancelled {cancelled.length > 0 && `(${cancelled.length})`}
-          </TabsTrigger>
-        </TabsList>
+      <div className="container mx-auto max-w-4xl px-4 py-6">
 
-        <TabsContent value="upcoming" className="space-y-3">
-          {upcoming.length === 0 ? (
-            <div className="rounded-xl border border-border bg-card py-12 text-center">
-              <p className="text-muted-foreground">No upcoming bookings.</p>
-              <Button asChild className="mt-4" variant="outline">
-                <Link to="/">Browse Events</Link>
-              </Button>
-            </div>
+        {/* ── Custom tabs ── */}
+        <div className="mb-5 flex gap-1 rounded-xl bg-stone-100 dark:bg-stone-800/60 p-1">
+          {TABS.map(({ key, label, icon: Icon }) => {
+            const count = tabLists[key].length
+            return (
+              <button
+                key={key}
+                onClick={() => setActiveTab(key)}
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
+                  activeTab === key
+                    ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-sm'
+                    : 'text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-300'
+                }`}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {label}
+                {count > 0 && (
+                  <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none ${
+                    activeTab === key
+                      ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400'
+                      : 'bg-stone-200 dark:bg-stone-700 text-stone-500 dark:text-stone-400'
+                  }`}>
+                    {count}
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* ── Card list ── */}
+        <div className="space-y-3">
+          {tabLists[activeTab].length === 0 ? (
+            <EmptyState tab={activeTab} />
           ) : (
-            upcoming.map((b) => <BookingCard key={b.id} booking={b} />)
+            tabLists[activeTab].map((b) => (
+              <BookingCard
+                key={b.id}
+                booking={b}
+                isPast={activeTab === 'past'}
+                onQr={setQrBooking}
+                onCancel={setCancelTarget}
+              />
+            ))
           )}
-        </TabsContent>
+        </div>
+      </div>
 
-        <TabsContent value="past" className="space-y-3">
-          {past.length === 0 ? (
-            <div className="rounded-xl border border-border bg-card py-12 text-center text-muted-foreground">
-              No past events yet.
-            </div>
-          ) : (
-            past.map((b) => <BookingCard key={b.id} booking={b} isPast />)
-          )}
-        </TabsContent>
-
-        <TabsContent value="cancelled" className="space-y-3">
-          {cancelled.length === 0 ? (
-            <div className="rounded-xl border border-border bg-card py-12 text-center text-muted-foreground">
-              No cancelled bookings.
-            </div>
-          ) : (
-            cancelled.map((b) => <BookingCard key={b.id} booking={b} />)
-          )}
-        </TabsContent>
-      </Tabs>
-
-      {/* Ticket Modal */}
+      {/* ── Ticket modal ── */}
       <Dialog open={!!qrBooking} onOpenChange={() => setQrBooking(null)}>
         <DialogContent className="max-w-sm p-0">
           <DialogHeader className="px-6 pt-5">
@@ -252,13 +347,9 @@ export function MyBookingsPage() {
             </DialogTitle>
           </DialogHeader>
 
-          {/* Printable ticket area */}
           <div ref={ticketRef} className="px-6 pb-2">
-            {/* Header */}
             <p className="logo mb-3 text-lg font-extrabold text-amber-600">EventHub</p>
-
             <p className="title text-base font-bold leading-snug">{qrBooking?.eventTitle}</p>
-
             <div className="mt-2 space-y-1">
               <p className="meta flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Calendar className="h-3 w-3" />
@@ -297,7 +388,6 @@ export function MyBookingsPage() {
 
             <Separator className="divider my-4 border-dashed" />
 
-            {/* QR Code */}
             <div className="qr flex flex-col items-center gap-3">
               <QRCodeSVG value={qrBooking?.checkInToken ?? ''} size={180} />
               <p className="token break-all text-center font-mono text-[10px] text-muted-foreground">

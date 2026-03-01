@@ -27,7 +27,7 @@ export function OrganizerProfilePage() {
   if (isPending) return <LoadingSpinner />
   if (error || !profile) {
     return (
-      <div className="container mx-auto max-w-4xl px-4 py-16 text-center text-slate-500">
+      <div className="container mx-auto max-w-4xl px-4 py-16 text-center text-muted-foreground">
         Organizer not found.
       </div>
     )
@@ -37,13 +37,13 @@ export function OrganizerProfilePage() {
     <div className="container mx-auto max-w-4xl px-4 py-8">
       <button
         onClick={() => navigate(-1)}
-        className="mb-6 flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800"
+        className="mb-6 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" />
         Back
       </button>
 
-      <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="mb-6 rounded-2xl border border-border bg-card p-6 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-center gap-4">
             <Avatar className="h-16 w-16">
@@ -52,11 +52,11 @@ export function OrganizerProfilePage() {
               </AvatarFallback>
             </Avatar>
             <div>
-              <h1 className="text-xl font-bold text-slate-900">{profile.name}</h1>
-              <p className="text-sm text-slate-500">
+              <h1 className="text-xl font-bold text-foreground">{profile.name}</h1>
+              <p className="text-sm text-muted-foreground">
                 Member since {formatDate(profile.memberSince, 'MMMM yyyy')}
               </p>
-              <div className="mt-1 flex items-center gap-1 text-sm text-slate-600">
+              <div className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
                 <Users className="h-4 w-4" />
                 <span>{profile.followerCount.toLocaleString()} followers</span>
               </div>
@@ -81,7 +81,7 @@ export function OrganizerProfilePage() {
         {profile.bio && (
           <>
             <Separator className="my-4" />
-            <p className="text-sm leading-relaxed text-slate-700">{profile.bio}</p>
+            <p className="text-sm leading-relaxed text-muted-foreground">{profile.bio}</p>
           </>
         )}
 
@@ -92,7 +92,7 @@ export function OrganizerProfilePage() {
                 href={profile.website}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-amber-600"
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-amber-600"
               >
                 <Globe className="h-3.5 w-3.5" />
                 Website
@@ -103,7 +103,7 @@ export function OrganizerProfilePage() {
                 href={`https://x.com/${profile.twitterHandle.replace(/^@/, '')}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-amber-600"
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-amber-600"
               >
                 <X className="h-3.5 w-3.5" />
                 {profile.twitterHandle}
@@ -114,7 +114,7 @@ export function OrganizerProfilePage() {
                 href={`https://instagram.com/${profile.instagramHandle.replace(/^@/, '')}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-amber-600"
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-amber-600"
               >
                 <Link2 className="h-3.5 w-3.5" />
                 {profile.instagramHandle}
@@ -124,12 +124,12 @@ export function OrganizerProfilePage() {
         )}
       </div>
 
-      <h2 className="mb-4 text-lg font-semibold text-slate-900">
+      <h2 className="mb-4 text-lg font-semibold text-foreground">
         Events ({profile.events.length})
       </h2>
 
       {profile.events.length === 0 ? (
-        <div className="rounded-xl border border-slate-200 bg-white py-12 text-center text-slate-500">
+        <div className="rounded-xl border border-border bg-card py-12 text-center text-muted-foreground">
           No events yet.
         </div>
       ) : (
@@ -138,11 +138,11 @@ export function OrganizerProfilePage() {
             <Link
               key={ev.id}
               to={`/events/${ev.id}`}
-              className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:border-amber-200 hover:shadow-md"
+              className="flex items-center justify-between rounded-xl border border-border bg-card p-4 shadow-sm transition-all hover:border-amber-300 hover:shadow-md"
             >
               <div>
-                <p className="font-medium text-slate-900">{ev.title}</p>
-                <div className="mt-1 flex items-center gap-3 text-xs text-slate-500">
+                <p className="font-medium text-foreground">{ev.title}</p>
+                <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
                     {formatDate(ev.startDate)}

@@ -44,10 +44,14 @@ export function EventFilters({ filters, onChange }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedLocation])
 
-  // Sync external location changes (e.g. from "See all nearby" button)
+  // Sync external changes (e.g. from "See all nearby" or programmatic filter resets)
   useEffect(() => {
     setLocation(filters.location ?? '')
   }, [filters.location])
+
+  useEffect(() => {
+    setSearch(filters.search ?? '')
+  }, [filters.search])
 
   const selectedTagIds = filters.tagIds ?? []
 

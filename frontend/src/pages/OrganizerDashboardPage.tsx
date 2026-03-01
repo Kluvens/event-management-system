@@ -1,49 +1,10 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { format, formatDistanceToNow } from 'date-fns'
-import {
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts'
-import {
-  LayoutDashboard,
-  CalendarDays,
-  Users,
-  Banknote,
-  Settings,
-  Plus,
-  Pencil,
-  ChevronDown,
-  ChevronUp,
-  ChevronLeft,
-  ChevronRight,
-  DollarSign,
-  CheckSquare,
-  MapPin,
-  Clock,
-  CheckCircle2,
-  XCircle,
-  Ticket,
-} from 'lucide-react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-import { toast } from 'sonner'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
+import { useOrganizerDashboard, useUpdateProfile } from '@/api/organizers'
+import { useCreatePayout, useMyPayouts } from '@/api/payouts'
+import { useSubscribers } from '@/api/subscriptions'
+import { LoadingSpinner } from '@/components/LoadingSpinner'
+import { StatusBadge } from '@/components/StatusBadge'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -51,6 +12,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Table,
   TableBody,
@@ -59,17 +22,48 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { StatusBadge } from '@/components/StatusBadge'
-import { LoadingSpinner } from '@/components/LoadingSpinner'
-import { AttendeeTable } from '@/features/organizer/AttendeeTable'
-import { useOrganizerDashboard, useUpdateProfile } from '@/api/organizers'
-import { useSubscribers } from '@/api/subscriptions'
-import { useEventAnalytics } from '@/api/analytics'
-import { useMyPayouts, useCreatePayout } from '@/api/payouts'
-import { useAuthStore } from '@/stores/authStore'
+import { Textarea } from '@/components/ui/textarea'
 import { useTheme } from '@/contexts/ThemeContext'
-import { formatDate, formatCurrency } from '@/lib/utils'
+import { formatCurrency, formatDate } from '@/lib/utils'
+import { useAuthStore } from '@/stores/authStore'
 import type { DashboardEvent, UpdateOrganizerProfileRequest } from '@/types'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { format, formatDistanceToNow } from 'date-fns'
+import {
+  Banknote,
+  CalendarDays,
+  CheckCircle2,
+  CheckSquare,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  DollarSign,
+  LayoutDashboard,
+  MapPin,
+  Pencil,
+  Plus,
+  Settings,
+  Ticket,
+  Users,
+  XCircle,
+} from 'lucide-react'
+import { useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { Link, useNavigate } from 'react-router-dom'
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
+import { toast } from 'sonner'
+import { z } from 'zod'
 
 // ── Schemas ───────────────────────────────────────────────────────────────────
 
@@ -105,6 +99,24 @@ const EVENT_GRADIENTS = [
   'from-rose-400 to-red-500',
   'from-cyan-400 to-blue-500',
 ]
+
+const AVATAR_COLORS = [
+  'bg-amber-500',
+  'bg-purple-500',
+  'bg-blue-500',
+  'bg-emerald-500',
+  'bg-rose-500',
+  'bg-cyan-500',
+  'bg-orange-500',
+  'bg-indigo-500',
+]
+
+function subscriberInitials(name: string) {
+  const parts = name.trim().split(/\s+/)
+  return parts.length >= 2
+    ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+    : name.slice(0, 2).toUpperCase()
+}
 
 // ── Stat card ─────────────────────────────────────────────────────────────────
 
@@ -271,86 +283,24 @@ function EventCalendar({ events }: { events: DashboardEvent[] }) {
 // ── Expandable event row ───────────────────────────────────────────────────────
 
 function ExpandableEventRow({ event }: { event: DashboardEvent }) {
-  const [expanded, setExpanded] = useState(false)
-  const { data: analytics } = useEventAnalytics(event.eventId, expanded)
-  const { theme } = useTheme()
-  const isDark = theme === 'dark'
-
-  const trendData = (analytics?.dailyBookings ?? []).map((d) => ({
-    date: d.date.slice(5),
-    bookings: d.count,
-  }))
+  const navigate = useNavigate()
 
   return (
-    <>
-      <TableRow
-        className="cursor-pointer hover:bg-muted/50"
-        onClick={() => setExpanded((v) => !v)}
-      >
-        <TableCell className="font-medium text-foreground">{event.title}</TableCell>
-        <TableCell>{formatDate(event.startDate)}</TableCell>
-        <TableCell>{event.confirmedBookings}/{event.capacity}</TableCell>
-        <TableCell>{formatCurrency(event.revenue)}</TableCell>
-        <TableCell><StatusBadge status={event.displayStatus} /></TableCell>
-        <TableCell>
-          <div className="flex items-center gap-2">
-            <Link to={`/events/${event.eventId}/edit`} onClick={(e) => e.stopPropagation()}>
-              <Button size="sm" variant="ghost"><Pencil className="h-3.5 w-3.5" /></Button>
-            </Link>
-            {expanded
-              ? <ChevronUp className="h-4 w-4 text-muted-foreground" />
-              : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-          </div>
-        </TableCell>
-      </TableRow>
-      {expanded && (
-        <TableRow>
-          <TableCell colSpan={6} className="bg-muted/50 p-4">
-            {analytics && (
-              <div className="mb-4 space-y-3">
-                <div className="flex flex-wrap gap-4 text-sm">
-                  <span className="text-muted-foreground">
-                    Occupancy:{' '}
-                    <span className="font-semibold text-foreground">{analytics.occupancyRate.toFixed(1)}%</span>
-                  </span>
-                  <span className="text-muted-foreground">
-                    Waitlist:{' '}
-                    <span className="font-semibold text-foreground">{analytics.waitlistCount}</span>
-                  </span>
-                  <span className="text-muted-foreground">
-                    Avg rating:{' '}
-                    <span className="font-semibold text-foreground">
-                      {analytics.averageRating > 0 ? `${analytics.averageRating.toFixed(1)} ★` : 'No reviews'}
-                    </span>
-                  </span>
-                  <span className="text-muted-foreground">
-                    Revenue:{' '}
-                    <span className="font-semibold text-foreground">{formatCurrency(analytics.totalRevenue)}</span>
-                  </span>
-                </div>
-                {trendData.length > 0 && (
-                  <div>
-                    <p className="mb-1 text-xs font-medium text-muted-foreground">Daily bookings (last 30 days)</p>
-                    <ResponsiveContainer width="100%" height={120}>
-                      <LineChart data={trendData} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#292524' : '#f1f5f9'} />
-                        <XAxis dataKey="date" tick={{ fontSize: 10, fill: isDark ? '#a8a29e' : '#78716c' }} />
-                        <YAxis tick={{ fontSize: 10, fill: isDark ? '#a8a29e' : '#78716c' }} allowDecimals={false} />
-                        <Tooltip
-                          contentStyle={isDark ? { borderRadius: '10px', border: '1px solid #292524', backgroundColor: '#1c1917', color: '#e7e5e4', fontSize: 12 } : { borderRadius: '10px', fontSize: 12 }}
-                        />
-                        <Line type="monotone" dataKey="bookings" stroke="#f59e0b" strokeWidth={2} dot={false} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
-              </div>
-            )}
-            <AttendeeTable eventId={event.eventId} />
-          </TableCell>
-        </TableRow>
-      )}
-    </>
+    <TableRow
+      className="cursor-pointer hover:bg-muted/50"
+      onClick={() => navigate(`/events/${event.eventId}/insights`)}
+    >
+      <TableCell className="font-medium text-foreground">{event.title}</TableCell>
+      <TableCell>{formatDate(event.startDate)}</TableCell>
+      <TableCell>{event.confirmedBookings}/{event.capacity}</TableCell>
+      <TableCell>{formatCurrency(event.revenue)}</TableCell>
+      <TableCell><StatusBadge status={event.displayStatus} /></TableCell>
+      <TableCell>
+        <Link to={`/events/${event.eventId}/edit`} onClick={(e) => e.stopPropagation()}>
+          <Button size="sm" variant="ghost"><Pencil className="h-3.5 w-3.5" /></Button>
+        </Link>
+      </TableCell>
+    </TableRow>
   )
 }
 
@@ -360,7 +310,9 @@ export function OrganizerDashboardPage() {
   const [view, setView] = useState<DashboardView>('overview')
   const [profileOpen, setProfileOpen] = useState(false)
   const [payoutOpen, setPayoutOpen] = useState(false)
+  const [subPage, setSubPage] = useState(1)
 
+  const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
   const { theme } = useTheme()
   const isDark = theme === 'dark'
@@ -439,7 +391,7 @@ export function OrganizerDashboardPage() {
   const navItems: { key: DashboardView; icon: React.ElementType; label: string; badge?: number }[] = [
     { key: 'overview',     icon: LayoutDashboard, label: 'Dashboard'   },
     { key: 'events',       icon: CalendarDays,    label: 'Events'      },
-    { key: 'subscribers',  icon: Users,           label: 'Subscribers', badge: subscribers.length   },
+    { key: 'subscribers',  icon: Users,           label: 'Subscribers' },
     { key: 'payouts',      icon: Banknote,        label: 'Payouts',     badge: pendingPayoutsCount  },
   ]
 
@@ -867,30 +819,84 @@ export function OrganizerDashboardPage() {
           )}
 
           {/* ══ SUBSCRIBERS ═══════════════════════════════════════════ */}
-          {view === 'subscribers' && (
-            <div className="overflow-hidden rounded-2xl border border-stone-100 dark:border-stone-800 bg-white dark:bg-stone-900 shadow-sm">
-              {subscribers.length === 0 ? (
-                <p className="py-10 text-center text-muted-foreground">No subscribers yet.</p>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Subscribed</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {subscribers.map((sub) => (
-                      <TableRow key={sub.subscriberId}>
-                        <TableCell className="font-medium">{sub.name}</TableCell>
-                        <TableCell>{formatDate(sub.subscribedAt)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </div>
-          )}
+          {view === 'subscribers' && (() => {
+            const SUB_PAGE_SIZE = 10
+            const totalPages = Math.max(1, Math.ceil(subscribers.length / SUB_PAGE_SIZE))
+            const pagedSubs = subscribers.slice((subPage - 1) * SUB_PAGE_SIZE, subPage * SUB_PAGE_SIZE)
+            return (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-100">
+                      {subscribers.length.toLocaleString()} Subscriber{subscribers.length !== 1 ? 's' : ''}
+                    </h2>
+                    <p className="text-xs text-stone-400 mt-0.5">People who follow your organiser profile</p>
+                  </div>
+                </div>
+                <div className="overflow-hidden rounded-2xl border border-stone-100 dark:border-stone-800 bg-white dark:bg-stone-900 shadow-sm">
+                  {subscribers.length === 0 ? (
+                    <p className="py-10 text-center text-muted-foreground">No subscribers yet.</p>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Subscribed</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {pagedSubs.map((sub) => (
+                          <TableRow
+                            key={sub.subscriberId}
+                            className="cursor-pointer hover:bg-muted/50 transition-colors"
+                            onClick={() => navigate(`/organizers/${sub.subscriberId}`)}
+                          >
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${AVATAR_COLORS[sub.subscriberId % AVATAR_COLORS.length]}`}>
+                                  {subscriberInitials(sub.name)}
+                                </div>
+                                <span className="font-medium">{sub.name}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {formatDistanceToNow(new Date(sub.subscribedAt), { addSuffix: true })}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </div>
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between text-sm text-stone-500">
+                    <span>
+                      Showing {(subPage - 1) * SUB_PAGE_SIZE + 1}–{Math.min(subPage * SUB_PAGE_SIZE, subscribers.length)} of {subscribers.length}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setSubPage((p) => Math.max(1, p - 1))}
+                        disabled={subPage === 1}
+                        className="rounded-lg p-1.5 hover:bg-stone-100 dark:hover:bg-stone-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </button>
+                      <span className="px-2 font-medium text-stone-700 dark:text-stone-300">
+                        {subPage} / {totalPages}
+                      </span>
+                      <button
+                        onClick={() => setSubPage((p) => Math.min(totalPages, p + 1))}
+                        disabled={subPage === totalPages}
+                        className="rounded-lg p-1.5 hover:bg-stone-100 dark:hover:bg-stone-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
 
           {/* ══ PAYOUTS ═══════════════════════════════════════════════ */}
           {view === 'payouts' && (

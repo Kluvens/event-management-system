@@ -120,6 +120,7 @@ export interface Booking {
   isCheckedIn: boolean
   checkedInAt: string | null
   checkInToken: string
+  eventImageUrl: string | null
 }
 
 export interface CheckInInfo {
@@ -377,7 +378,9 @@ export interface EventAnalytics {
   confirmedBookings: number
   cancelledBookings: number
   waitlistCount: number
+  totalCheckedIn: number
   occupancyRate: number
+  checkInRate: number
   totalRevenue: number
   averageRating: number
   reviewCount: number

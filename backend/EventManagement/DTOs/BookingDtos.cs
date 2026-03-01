@@ -15,5 +15,6 @@ public record BookingResponse(
     int PointsEarned,
     bool IsCheckedIn,
     DateTime? CheckedInAt,
-    string? CheckInToken
+    string? CheckInToken,
+    string? EventImageUrl
 );

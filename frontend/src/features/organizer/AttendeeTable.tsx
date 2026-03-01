@@ -71,16 +71,16 @@ export function AttendeeTable({ eventId }: Props) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-4 text-sm">
-          <span className="text-slate-600">
-            <strong>{confirmed}</strong> confirmed
+          <span className="text-muted-foreground">
+            <strong className="text-foreground">{confirmed}</strong> confirmed
           </span>
-          <span className="text-emerald-600">
+          <span className="text-emerald-600 dark:text-emerald-400">
             <strong>{checkedIn}</strong> checked in
           </span>
         </div>
         <div className="flex gap-2">
           <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search attendees…"
               value={search}
@@ -100,10 +100,10 @@ export function AttendeeTable({ eventId }: Props) {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-slate-200">
+      <div className="overflow-hidden rounded-lg border border-border">
         <Table>
           <TableHeader>
-            <TableRow className="bg-slate-50">
+            <TableRow className="bg-muted/50">
               <TableHead>Attendee</TableHead>
               <TableHead>Booked</TableHead>
               <TableHead>Status</TableHead>
@@ -116,7 +116,7 @@ export function AttendeeTable({ eventId }: Props) {
               <TableRow>
                 <TableCell
                   colSpan={5}
-                  className="py-8 text-center text-slate-500"
+                  className="py-8 text-center text-muted-foreground"
                 >
                   Loading…
                 </TableCell>
@@ -125,7 +125,7 @@ export function AttendeeTable({ eventId }: Props) {
               <TableRow>
                 <TableCell
                   colSpan={5}
-                  className="py-8 text-center text-slate-500"
+                  className="py-8 text-center text-muted-foreground"
                 >
                   No attendees found.
                 </TableCell>
@@ -136,31 +136,33 @@ export function AttendeeTable({ eventId }: Props) {
                   <TableCell>
                     <div>
                       <p className="text-sm font-medium">{a.name}</p>
-                      <p className="text-xs text-slate-500">{a.email}</p>
+                      <p className="text-xs text-muted-foreground">{a.email}</p>
                     </div>
                   </TableCell>
-                  <TableCell className="text-xs text-slate-500">
+                  <TableCell className="text-xs text-muted-foreground">
                     {formatRelative(a.bookedAt)}
                   </TableCell>
                   <TableCell>
                     <Badge
-                      variant={
-                        a.bookingStatus === 'Confirmed' ? 'default' : 'secondary'
-                      }
-                      className="text-xs"
+                      variant="outline"
+                      className={`text-xs ${
+                        a.bookingStatus === 'Confirmed'
+                          ? 'border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-400'
+                          : 'border-stone-200 bg-stone-50 text-stone-500 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-400'
+                      }`}
                     >
                       {a.bookingStatus}
                     </Badge>
                   </TableCell>
                   <TableCell>
                     {a.isCheckedIn ? (
-                      <span className="text-xs font-medium text-emerald-600">
+                      <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
                         {a.checkedInAt
                           ? formatDateTime(a.checkedInAt)
                           : 'Checked in'}
                       </span>
                     ) : (
-                      <span className="text-xs text-slate-400">
+                      <span className="text-xs text-muted-foreground">
                         Not checked in
                       </span>
                     )}
@@ -215,7 +217,7 @@ export function AttendeeTable({ eventId }: Props) {
           </DialogHeader>
           <div className="flex flex-col items-center gap-3 py-4">
             <QRCodeSVG value={qrRecord?.checkInToken ?? ''} size={200} />
-            <p className="break-all text-center font-mono text-xs text-slate-400">
+            <p className="break-all text-center font-mono text-xs text-muted-foreground">
               {qrRecord?.checkInToken}
             </p>
           </div>

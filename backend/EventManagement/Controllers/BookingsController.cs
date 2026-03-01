@@ -58,7 +58,7 @@ public class BookingsController(
             b.Id, b.EventId, b.Event.Title, b.Event.Location,
             b.Event.StartDate, b.Event.EndDate, b.Event.Price,
             b.BookedAt, b.Status, b.PointsEarned,
-            b.IsCheckedIn, b.CheckedInAt, b.CheckInToken)));
+            b.IsCheckedIn, b.CheckedInAt, b.CheckInToken, b.Event.ImageUrl)));
     }
 
     // ── Book ───────────────────────────────────────────────────────
@@ -310,5 +310,5 @@ public class BookingsController(
     private static BookingResponse ToResponse(Booking b, Event ev) => new(
         b.Id, ev.Id, ev.Title, ev.Location, ev.StartDate, ev.EndDate,
         ev.Price, b.BookedAt, b.Status, b.PointsEarned,
-        b.IsCheckedIn, b.CheckedInAt, b.CheckInToken);
+        b.IsCheckedIn, b.CheckedInAt, b.CheckInToken, ev.ImageUrl);
 }

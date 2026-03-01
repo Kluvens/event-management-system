@@ -5,6 +5,19 @@ import { useAuthStore } from '@/stores/authStore'
 export const api = axios.create({
   baseURL: '/api',
   headers: { 'Content-Type': 'application/json' },
+  // ASP.NET Core [FromQuery] List<int> expects repeated keys: tagIds=1&tagIds=2
+  // Axios default uses bracket notation (tagIds[0]=1) which .NET does not parse.
+  paramsSerializer: (params) => {
+    const sp = new URLSearchParams()
+    for (const [key, val] of Object.entries(params)) {
+      if (Array.isArray(val)) {
+        val.forEach((v) => sp.append(key, String(v)))
+      } else if (val !== undefined && val !== null) {
+        sp.append(key, String(val))
+      }
+    }
+    return sp.toString()
+  },
 })
 
 // Attach the Cognito ID token to every request (contains email/name claims for CognitoUserResolver)
