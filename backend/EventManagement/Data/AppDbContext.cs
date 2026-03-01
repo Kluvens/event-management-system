@@ -62,9 +62,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .HasColumnType("decimal(18,2)");
 
         // ── Bookings ───────────────────────────────────────────────
+        // Filtered unique index: only one CONFIRMED booking per user per event.
+        // Cancelled rows are excluded so a user can re-book the same event after
+        // cancelling without hitting a constraint violation.
         modelBuilder.Entity<Booking>()
             .HasIndex(b => new { b.UserId, b.EventId })
-            .IsUnique();
+            .IsUnique()
+            .HasFilter("\"Status\" = 'Confirmed'");
 
         modelBuilder.Entity<Booking>()
             .HasIndex(b => b.CheckInToken)
