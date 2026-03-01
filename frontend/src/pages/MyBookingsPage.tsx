@@ -123,7 +123,7 @@ export function MyBookingsPage() {
           <span className="font-medium text-foreground">
             {formatCurrency(booking.eventPrice)}
           </span>
-          {booking.pointsEarned > 0 && (
+          {booking.pointsEarned > 0 && booking.status !== 'Cancelled' && (
             <span className="text-xs font-medium text-amber-600">
               +{booking.pointsEarned} pts
             </span>
