@@ -28,11 +28,13 @@ public class ReviewsControllerTests : IDisposable
     /// <summary>
     /// Creates a past event (host) that an attendee has a confirmed booking for.
     /// Returns host and attendee authenticated clients plus the event id.
+    /// The event is created with a future date so the booking API allows it, then
+    /// backdated via the database to simulate a completed event.
     /// </summary>
     private async Task<(HttpClient hostClient, HttpClient attendeeClient, int eventId)>
         SetupReviewScenarioAsync(string suffix)
     {
-        // Host creates a past event (already started → can review)
+        // Create event with FUTURE dates so the booking API does not reject it
         var hostToken = await ApiClient.RegisterAndLoginAsync(
             _client, $"RHost{suffix}", $"rhost{suffix}@rev.test", "Pass!");
         var hostClient = ApiClient.WithToken(_factory, hostToken);
@@ -40,20 +42,21 @@ public class ReviewsControllerTests : IDisposable
         var createResp = await hostClient.PostAsJsonAsync("/api/events",
             new CreateEventRequest(
                 $"Past Event {suffix}", "A past event", "Sydney",
-                DateTime.UtcNow.AddDays(-5),     // started in the past
-                DateTime.UtcNow.AddDays(-5).AddHours(2),
+                DateTime.UtcNow.AddDays(30),
+                DateTime.UtcNow.AddDays(30).AddHours(2),
                 100, 0m, true, 1, null, null));
         var ev = await createResp.Content.ReadFromJsonAsync<EventResponse>();
         Assert.NotNull(ev);
 
-        // Publish the event so attendees can book it
         await hostClient.PostAsync($"/api/events/{ev.Id}/publish", null);
 
-        // Attendee books the event
-        var attendeeToken = await ApiClient.RegisterAndLoginAsync(
+        // Seed a confirmed booking directly and backdate the event to the past
+        var (attendeeToken, attendeeId) = await ApiClient.RegisterAndGetIdAsync(
             _client, $"RAttendee{suffix}", $"rattendee{suffix}@rev.test", "Pass!");
         var attendeeClient = ApiClient.WithToken(_factory, attendeeToken);
-        await ApiClient.BookEventAsync(attendeeClient, ev.Id);
+
+        await ApiClient.SeedDirectBookingAsync(_factory, attendeeId, ev.Id);
+        await ApiClient.BackdateEventAsync(_factory, ev.Id);
 
         return (hostClient, attendeeClient, ev.Id);
     }
@@ -90,11 +93,11 @@ public class ReviewsControllerTests : IDisposable
         var r1 = await r1Resp.Content.ReadFromJsonAsync<ReviewResponse>();
         Assert.NotNull(r1);
 
-        // Register a second attendee and book
-        var attendee2Token = await ApiClient.RegisterAndLoginAsync(
+        // Register a second attendee with a direct DB booking (event is now past)
+        var (attendee2Token, attendee2Id) = await ApiClient.RegisterAndGetIdAsync(
             _client, "RAttSH2", "ratendee2sh@rev.test", "Pass!");
         var attendee2Client = ApiClient.WithToken(_factory, attendee2Token);
-        await ApiClient.BookEventAsync(attendee2Client, eventId);
+        await ApiClient.SeedDirectBookingAsync(_factory, attendee2Id, eventId);
         await attendee2Client.PostAsJsonAsync(
             $"/api/events/{eventId}/reviews",
             new CreateReviewRequest(5, "Great event"));

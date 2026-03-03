@@ -40,9 +40,9 @@ public sealed class EventsControllerTests : IDisposable
         var response = await _client.GetAsync("/api/events");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var events = await response.Content.ReadFromJsonAsync<List<EventResponse>>();
-        Assert.NotNull(events);
-        Assert.DoesNotContain(events, e => e.Title == "Private Event");
+        var paged = await response.Content.ReadFromJsonAsync<PagedEventResponse>();
+        Assert.NotNull(paged);
+        Assert.DoesNotContain(paged.Items, e => e.Title == "Private Event");
     }
 
     [Fact]
@@ -55,11 +55,11 @@ public sealed class EventsControllerTests : IDisposable
         await ApiClient.CreateEventAsync(hostClient, "Pub2", isPublic: true);
         await ApiClient.CreateEventAsync(hostClient, "Priv2", isPublic: false);
 
-        var response = await hostClient.GetAsync("/api/events");
-        var events = await response.Content.ReadFromJsonAsync<List<EventResponse>>();
-        Assert.NotNull(events);
-        Assert.Contains(events, e => e.Title == "Pub2");
-        Assert.Contains(events, e => e.Title == "Priv2");
+        var response = await hostClient.GetAsync("/api/events?pageSize=200");
+        var paged = await response.Content.ReadFromJsonAsync<PagedEventResponse>();
+        Assert.NotNull(paged);
+        Assert.Contains(paged.Items, e => e.Title == "Pub2");
+        Assert.Contains(paged.Items, e => e.Title == "Priv2");
     }
 
     [Fact]
@@ -73,9 +73,9 @@ public sealed class EventsControllerTests : IDisposable
             description: "Advanced topics", location: "Melbourne");
 
         var response = await _client.GetAsync("/api/events?search=XYZ");
-        var events = await response.Content.ReadFromJsonAsync<List<EventResponse>>();
-        Assert.NotNull(events);
-        Assert.Contains(events, e => e.Title.Contains("XYZ"));
+        var paged = await response.Content.ReadFromJsonAsync<PagedEventResponse>();
+        Assert.NotNull(paged);
+        Assert.Contains(paged.Items, e => e.Title.Contains("XYZ"));
     }
 
     [Fact]
@@ -90,9 +90,9 @@ public sealed class EventsControllerTests : IDisposable
         await ApiClient.CreateEventAsync(hostClient, "Concert Event", categoryId: 3);
 
         var response = await _client.GetAsync("/api/events?categoryId=2");
-        var events = await response.Content.ReadFromJsonAsync<List<EventResponse>>();
-        Assert.NotNull(events);
-        Assert.All(events, e => Assert.Equal(2, e.CategoryId));
+        var paged = await response.Content.ReadFromJsonAsync<PagedEventResponse>();
+        Assert.NotNull(paged);
+        Assert.All(paged.Items, e => Assert.Equal(2, e.CategoryId));
     }
 
     [Fact]
@@ -108,10 +108,11 @@ public sealed class EventsControllerTests : IDisposable
         var response = await _client.GetAsync("/api/events?sortBy=price");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var events = await response.Content.ReadFromJsonAsync<List<EventResponse>>();
-        Assert.NotNull(events);
+        var paged = await response.Content.ReadFromJsonAsync<PagedEventResponse>();
+        Assert.NotNull(paged);
 
         // Prices should be non-decreasing
+        var events = paged.Items;
         for (int i = 1; i < events.Count; i++)
             Assert.True(events[i].Price >= events[i - 1].Price);
     }
@@ -474,8 +475,8 @@ public sealed class EventsControllerTests : IDisposable
 
         // Anonymous user cannot see it in the listing
         var allResp = await _client.GetAsync("/api/events");
-        var events = await allResp.Content.ReadFromJsonAsync<List<EventResponse>>();
-        Assert.DoesNotContain(events!, e => e.Id == created.Id);
+        var paged = await allResp.Content.ReadFromJsonAsync<PagedEventResponse>();
+        Assert.DoesNotContain(paged!.Items, e => e.Id == created.Id);
 
         // Anonymous user gets 404 on direct access
         var getResp = await _client.GetAsync($"/api/events/{created.Id}");

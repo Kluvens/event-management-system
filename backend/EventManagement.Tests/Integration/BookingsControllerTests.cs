@@ -140,14 +140,17 @@ public sealed class BookingsControllerTests : IDisposable
         var (_, event1Id) = await SetupHostAndEventAsync("E1", price: 100m);
         var (_, event2Id) = await SetupHostAndEventAsync("E2", price: 100m);
 
-        var attendeeToken = await ApiClient.RegisterAndLoginAsync(
+        var (attendeeToken, attendeeId) = await ApiClient.RegisterAndGetIdAsync(
             _client, "AttendeeE", "attendeee@book.test", "Pass!");
         var attendeeClient = ApiClient.WithToken(_factory, attendeeToken);
 
-        // First booking: 1000 points earned (no discount yet, Standard tier)
+        // First booking: 1000 points earned (Standard tier — no discount yet)
         var r1 = await ApiClient.BookEventAsync(attendeeClient, event1Id);
         var b1 = await r1.Content.ReadFromJsonAsync<BookingResponse>();
         Assert.Equal(1000, b1!.PointsEarned);
+
+        // Simulate event1 completing and points being awarded (deferred in production)
+        await ApiClient.CreditLoyaltyPointsAsync(_factory, attendeeId, 1000);
 
         // Now at Bronze (1000 pts), 5% discount on $100 = $95, points = 950
         var r2 = await ApiClient.BookEventAsync(attendeeClient, event2Id);
@@ -324,9 +327,9 @@ public sealed class BookingsControllerTests : IDisposable
 
         await attendeeClient.DeleteAsync($"/api/bookings/{booking.Id}");
 
-        // Rebook the same event
+        // Rebook the same event — creates a fresh booking record (201 Created)
         var rebookResp = await ApiClient.BookEventAsync(attendeeClient, eventId);
-        Assert.Equal(HttpStatusCode.OK, rebookResp.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, rebookResp.StatusCode);
 
         var rebooked = await rebookResp.Content.ReadFromJsonAsync<BookingResponse>();
         Assert.Equal("Confirmed", rebooked!.Status);

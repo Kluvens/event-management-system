@@ -1,6 +1,9 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using EventManagement.Data;
 using EventManagement.DTOs;
+using EventManagement.Models;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace EventManagement.Tests.Helpers;
 
@@ -119,4 +122,61 @@ public static class ApiClient
     public static Task<HttpResponseMessage> BookEventAsync(
         HttpClient client, int eventId) =>
         client.PostAsJsonAsync("/api/bookings", new CreateBookingRequest(eventId));
+
+    /// <summary>
+    /// Directly seeds a Confirmed booking into the database, bypassing the booking
+    /// API's date validation. Use this when testing scenarios that require a booking
+    /// on a past (already-started) event.
+    /// </summary>
+    public static async Task SeedDirectBookingAsync(
+        CustomWebApplicationFactory factory, int userId, int eventId)
+    {
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        db.Bookings.Add(new Booking
+        {
+            UserId   = userId,
+            EventId  = eventId,
+            Status   = "Confirmed",
+            BookedAt = DateTime.UtcNow,
+        });
+        await db.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// Directly updates an event's StartDate and EndDate to the past, bypassing
+    /// the API. Call after seeding bookings to simulate a completed event for review
+    /// and other post-event tests.
+    /// </summary>
+    public static async Task BackdateEventAsync(
+        CustomWebApplicationFactory factory, int eventId, int daysAgo = 5)
+    {
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var ev = await db.Events.FindAsync(eventId);
+        if (ev is not null)
+        {
+            ev.StartDate = DateTime.UtcNow.AddDays(-daysAgo);
+            ev.EndDate   = ev.StartDate.AddHours(2);
+            await db.SaveChangesAsync();
+        }
+    }
+
+    /// <summary>
+    /// Directly credits loyalty points to a user's account, bypassing the deferred
+    /// award mechanism. Use this in tests that need to seed a specific loyalty tier
+    /// before making a booking.
+    /// </summary>
+    public static async Task CreditLoyaltyPointsAsync(
+        CustomWebApplicationFactory factory, int userId, int points)
+    {
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var user = await db.Users.FindAsync(userId);
+        if (user is not null)
+        {
+            user.LoyaltyPoints += points;
+            await db.SaveChangesAsync();
+        }
+    }
 }

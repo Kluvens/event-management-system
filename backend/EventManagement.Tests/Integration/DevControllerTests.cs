@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using EventManagement.DTOs;
 using EventManagement.Tests.Helpers;
 using Xunit;
 
@@ -101,17 +102,17 @@ public sealed class DevControllerTests : IAsyncLifetime, IDisposable
         await _authedClient.PostAsync("/api/dev/seed", null);
 
         var beforeResp = await _client.GetAsync("/api/events");
-        var beforeEvents = await beforeResp.Content.ReadFromJsonAsync<List<object>>();
-        Assert.NotNull(beforeEvents);
-        Assert.NotEmpty(beforeEvents);
+        var beforePaged = await beforeResp.Content.ReadFromJsonAsync<PagedEventResponse>();
+        Assert.NotNull(beforePaged);
+        Assert.NotEmpty(beforePaged.Items);
 
         var resetResp = await _authedClient.DeleteAsync("/api/dev/reset");
         Assert.Equal(HttpStatusCode.OK, resetResp.StatusCode);
 
         var afterResp = await _client.GetAsync("/api/events");
-        var afterEvents = await afterResp.Content.ReadFromJsonAsync<List<object>>();
-        Assert.NotNull(afterEvents);
-        Assert.Empty(afterEvents);
+        var afterPaged = await afterResp.Content.ReadFromJsonAsync<PagedEventResponse>();
+        Assert.NotNull(afterPaged);
+        Assert.Empty(afterPaged.Items);
     }
 
     [Fact]
@@ -199,9 +200,9 @@ public sealed class DevControllerTests : IAsyncLifetime, IDisposable
         Assert.Equal(HttpStatusCode.OK, loginResp.StatusCode);
 
         var eventsResp = await _client.GetAsync("/api/events");
-        var events = await eventsResp.Content.ReadFromJsonAsync<List<object>>();
-        Assert.NotNull(events);
-        Assert.NotEmpty(events);
+        var paged = await eventsResp.Content.ReadFromJsonAsync<PagedEventResponse>();
+        Assert.NotNull(paged);
+        Assert.NotEmpty(paged.Items);
     }
 }
 

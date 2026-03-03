@@ -94,9 +94,9 @@ public sealed class EventsControllerExtendedTests : IAsyncLifetime, IDisposable
         await _adminClient.PostAsync($"/api/admin/events/{_publishedEventId}/suspend", null);
 
         var response = await _client.GetAsync("/api/events");
-        var events = await response.Content.ReadFromJsonAsync<List<EventResponse>>();
-        Assert.NotNull(events);
-        Assert.DoesNotContain(events, e => e.Id == _publishedEventId);
+        var paged = await response.Content.ReadFromJsonAsync<PagedEventResponse>();
+        Assert.NotNull(paged);
+        Assert.DoesNotContain(paged.Items, e => e.Id == _publishedEventId);
     }
 
     // ── Booking a suspended event is rejected ─────────────────────────
@@ -126,10 +126,10 @@ public sealed class EventsControllerExtendedTests : IAsyncLifetime, IDisposable
         await ApiClient.CreateEventAsync(_hostClient, "Arts Event Tag", tagIds: new List<int> { 4 });
 
         var response = await _client.GetAsync("/api/events?tagIds=2");
-        var events = await response.Content.ReadFromJsonAsync<List<EventResponse>>();
-        Assert.NotNull(events);
-        Assert.NotEmpty(events);
-        Assert.All(events, e => Assert.Contains("Technology", e.Tags));
+        var paged = await response.Content.ReadFromJsonAsync<PagedEventResponse>();
+        Assert.NotNull(paged);
+        Assert.NotEmpty(paged.Items);
+        Assert.All(paged.Items, e => Assert.Contains("Technology", e.Tags));
     }
 
     // ── Date-range filter ─────────────────────────────────────────────
@@ -146,11 +146,11 @@ public sealed class EventsControllerExtendedTests : IAsyncLifetime, IDisposable
         await ApiClient.CreateEventAsync(_hostClient, "OutRange Event", daysFromNow: 5);
 
         var response = await _client.GetAsync(
-            $"/api/events?from={from:o}&to={to:o}");
-        var events = await response.Content.ReadFromJsonAsync<List<EventResponse>>();
-        Assert.NotNull(events);
-        Assert.Contains(events, e => e.Title == "InRange Event");
-        Assert.DoesNotContain(events, e => e.Title == "OutRange Event");
+            $"/api/events?from={from:o}&to={to:o}&pageSize=200");
+        var paged = await response.Content.ReadFromJsonAsync<PagedEventResponse>();
+        Assert.NotNull(paged);
+        Assert.Contains(paged.Items, e => e.Title == "InRange Event");
+        Assert.DoesNotContain(paged.Items, e => e.Title == "OutRange Event");
     }
 
     // ── Popularity sort ───────────────────────────────────────────────
@@ -176,12 +176,13 @@ public sealed class EventsControllerExtendedTests : IAsyncLifetime, IDisposable
             _client, "PopAtt", "popatt@ev.test", "Password1!");
         await ApiClient.BookEventAsync(ApiClient.WithToken(_factory, attToken), popEv!.Id);
 
-        var response = await _client.GetAsync("/api/events?sortBy=popularity");
-        var events   = await response.Content.ReadFromJsonAsync<List<EventResponse>>();
-        Assert.NotNull(events);
-        Assert.True(events.Count >= 2);
+        var response = await _client.GetAsync("/api/events?sortBy=popularity&pageSize=200");
+        var paged    = await response.Content.ReadFromJsonAsync<PagedEventResponse>();
+        Assert.NotNull(paged);
+        Assert.True(paged.Items.Count >= 2);
 
         // Popular event should come before unpopular (higher booking count first)
+        var events = paged.Items;
         var popularIndex   = events.FindIndex(e => e.Title == "Popular");
         var unpopularIndex = events.FindIndex(e => e.Title == "Unpopular");
         Assert.True(popularIndex < unpopularIndex,

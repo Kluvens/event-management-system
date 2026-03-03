@@ -66,23 +66,27 @@ public sealed class NotificationsControllerTests : IDisposable
         var evResp = await ApiClient.CreateEventAsync(hostClient, "FanEvent");
         var ev     = await evResp.Content.ReadFromJsonAsync<EventResponse>();
 
-        // Two attendees book
+        // Two attendees book (booking also sends a notification each)
         var (a1, _) = await RegisterUserAsync("FanA1");
         var (a2, _) = await RegisterUserAsync("FanA2");
         await ApiClient.BookEventAsync(a1, ev!.Id);
         await ApiClient.BookEventAsync(a2, ev.Id);
 
-        // Host posts announcement
+        // Record counts before the announcement
+        var before1 = (await a1.GetFromJsonAsync<UnreadCountResponse>("/api/notifications/unread-count"))!.Count;
+        var before2 = (await a2.GetFromJsonAsync<UnreadCountResponse>("/api/notifications/unread-count"))!.Count;
+
+        // Host posts announcement — should fan out to both attendees
         var annoResp = await hostClient.PostAsJsonAsync(
             $"/api/events/{ev.Id}/announcements",
             new CreateAnnouncementRequest("Big News", "The venue changed."));
         Assert.Equal(HttpStatusCode.Created, annoResp.StatusCode);
 
-        // Both attendees should have 1 unread notification
+        // Both attendees' unread count should have increased by exactly 1
         var c1 = await a1.GetFromJsonAsync<UnreadCountResponse>("/api/notifications/unread-count");
         var c2 = await a2.GetFromJsonAsync<UnreadCountResponse>("/api/notifications/unread-count");
-        Assert.Equal(1, c1!.Count);
-        Assert.Equal(1, c2!.Count);
+        Assert.Equal(before1 + 1, c1!.Count);
+        Assert.Equal(before2 + 1, c2!.Count);
     }
 
     // ── Mark single notification as read ──────────────────────────────
@@ -101,14 +105,16 @@ public sealed class NotificationsControllerTests : IDisposable
             $"/api/events/{ev.Id}/announcements",
             new CreateAnnouncementRequest("Heads up", "Doors open early."));
 
+        var beforeCount = (await attendeeClient.GetFromJsonAsync<UnreadCountResponse>("/api/notifications/unread-count"))!.Count;
+        Assert.True(beforeCount > 0);
+
         var notifications = await attendeeClient.GetFromJsonAsync<NotificationResponse[]>("/api/notifications");
-        var n = notifications!.First();
-        Assert.False(n.IsRead);
+        var n = notifications!.First(x => !x.IsRead);
 
         await attendeeClient.PatchAsync($"/api/notifications/{n.Id}/read", null);
 
         var count = await attendeeClient.GetFromJsonAsync<UnreadCountResponse>("/api/notifications/unread-count");
-        Assert.Equal(0, count!.Count);
+        Assert.Equal(beforeCount - 1, count!.Count);
     }
 
     // ── Mark all as read ──────────────────────────────────────────────
@@ -129,8 +135,9 @@ public sealed class NotificationsControllerTests : IDisposable
         await hostClient.PostAsJsonAsync($"/api/events/{ev.Id}/announcements",
             new CreateAnnouncementRequest("A2", "msg2"));
 
+        // Confirm there are unread notifications (booking + 2 announcements)
         var before = await attendeeClient.GetFromJsonAsync<UnreadCountResponse>("/api/notifications/unread-count");
-        Assert.Equal(2, before!.Count);
+        Assert.True(before!.Count >= 2);
 
         await attendeeClient.PatchAsync("/api/notifications/read-all", null);
 
