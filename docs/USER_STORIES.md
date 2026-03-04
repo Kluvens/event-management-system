@@ -30,16 +30,31 @@ User stories for the Event Management System, written from the perspective of ea
 
 | ID | User Story | Acceptance Criteria |
 |---|---|---|
-| US-E01 | As a **guest or attendee**, I want to browse public events so that I can discover what's available. | Returns public, non-suspended, active events; unauthenticated users see only public events; authenticated users also see their own private events. |
+| US-E01 | As a **guest or attendee**, I want to browse public events so that I can discover what's available. | Returns public, non-suspended, published events; unauthenticated users see only public events; authenticated users also see their own private and draft events. Results are paginated. |
 | US-E02 | As a **user**, I want to search and filter events by keyword, category, tags, and date range so that I can find relevant events quickly. | Supports `search`, `categoryId`, `tagIds`, `from`, `to`, and `sortBy` query parameters; `sortBy` accepts `date`, `popularity`, and `price`. |
 | US-E03 | As a **user**, I want to view full details of a single event so that I can decide whether to book. | Returns full event detail; private events are `404` for non-owners and non-admins. |
-| US-E04 | As a **host**, I want to create an event with a title, location, dates, capacity, price, category, and tags so that attendees can find and book it. | Event is created and immediately discoverable; `categoryId` must be valid; `tagIds` are optional; returns `201` with the created event. |
-| US-E05 | As a **host**, I want to edit my event so that I can correct details or update information. | Only the event creator or an Admin can update; tags are replaced wholesale on update; returns `204` or `403`. |
-| US-E06 | As a **host**, I want to cancel my event so that attendees know it will not proceed. | Sets `status` to `Cancelled`; already-cancelled events return `400`; only owner or Admin can cancel. |
-| US-E07 | As a **host**, I want to postpone my event to new dates so that attendees can plan accordingly. | Sets `status` to `Postponed`; records original date in `postponedDate`; cannot postpone a cancelled event. |
-| US-E08 | As a **host**, I want to delete my event so that it is permanently removed from the platform. | Only the event creator or an Admin can delete; returns `204` or `403`. |
-| US-E09 | As a **host**, I want to view a statistics dashboard for my event so that I can measure performance. | Returns confirmed/cancelled booking counts, occupancy %, revenue, and average rating; only owner or Admin can view. |
-| US-E10 | As a **host**, I want to post announcements on my event so that booked attendees are kept informed. | Only owner or Admin can create; announcements are readable by anyone; returns `201` with the announcement. |
+| US-E04 | As a **host**, I want to create an event with a title, location, dates, capacity, price, category, tags, and an optional cover image so that attendees can find and book it. | Event is created with `Draft` status; `categoryId` must be valid; `tagIds` are optional; `imageUrl` is optional; returns `201` with the created event. |
+| US-E05 | As a **host**, I want to publish my draft event so that it becomes visible and bookable by attendees. | Only the event creator or an Admin can publish; only `Draft` events can be published; status changes to `Published`; returns `204`. |
+| US-E06 | As a **host**, I want to edit my event so that I can correct details or update information. | Only the event creator or an Admin can update; tags are replaced wholesale on update; subscribers and confirmed attendees receive an in-app notification when a published or postponed event is updated; returns `204` or `403`. |
+| US-E07 | As a **host**, I want to cancel my event so that attendees know it will not proceed. | Sets `status` to `Cancelled`; already-cancelled events return `400`; only owner or Admin can cancel. |
+| US-E08 | As a **host**, I want to postpone my event to new dates so that attendees can plan accordingly. | Sets `status` to `Postponed`; records original date in `postponedDate`; cannot postpone a cancelled event. |
+| US-E09 | As a **host**, I want to delete my event so that it is permanently removed from the platform. | Only the event creator or an Admin can delete; returns `204` or `403`. |
+| US-E10 | As a **host**, I want to view a statistics dashboard for my event so that I can measure performance. | Returns confirmed/cancelled booking counts, occupancy %, revenue, and average rating; only owner or Admin can view. |
+| US-E11 | As a **host**, I want to post announcements on my event so that booked attendees are kept informed. | Only owner or Admin can create; creates in-app notifications for all confirmed attendees; announcements are readable by anyone; returns `201` with the announcement. |
+| US-E12 | As a **host**, I want to generate a private invite link for my event so that I can share access with specific people. | Generates a unique 32-character `inviteCode` for the event; only the event owner can generate; returns the invite code; calling again replaces the existing code. |
+| US-E13 | As a **host**, I want to revoke my event's invite code so that the old link no longer grants access. | Sets `inviteCode` to null; only the event owner can revoke; returns `204`. |
+| US-E14 | As an **attendee**, I want to join a waitlist when an event is sold out so that I can attend if a spot opens up. | Only allowed when the event is at capacity and the user has no active booking; duplicate waitlist entries return `409`; returns `201` with the user's position; position is 1-indexed. |
+| US-E15 | As an **attendee**, I want to check my position on a waitlist so that I know how likely I am to get a spot. | Returns position number and join timestamp; `404` if not on the waitlist. |
+| US-E16 | As an **attendee**, I want to leave a waitlist I previously joined so that I am no longer waiting. | Removes the user's entry and re-numbers all subsequent positions; returns `204`. |
+| US-E17 | As a **host**, I want to view detailed analytics for my event so that I can track bookings over time. | Returns confirmed/cancelled/waitlist/checked-in counts, occupancy %, check-in rate, revenue, average rating, review count, and a daily booking breakdown for the past 30 days; only owner or Admin can view. |
+
+---
+
+## Image Uploads
+
+| ID | User Story | Acceptance Criteria |
+|---|---|---|
+| US-IMG01 | As an **authenticated user**, I want to upload a cover image for my event so that the event page has visual appeal. | `POST /api/upload` accepts JPEG, PNG, WebP, or GIF images up to 5 MB; the file is stored in cloud storage and the public URL is returned; that URL can then be used in event create/update requests. |
 
 ---
 
@@ -47,9 +62,10 @@ User stories for the Event Management System, written from the perspective of ea
 
 | ID | User Story | Acceptance Criteria |
 |---|---|---|
-| US-B01 | As an **attendee**, I want to book a spot at an event so that I can attend. | Booking is created with status `Confirmed`; blocked if event is at capacity; if a cancelled booking already exists it is re-activated rather than duplicated; points are awarded. |
+| US-B01 | As an **attendee**, I want to book a spot at an event so that I can attend. | Booking is created with status `Confirmed`; blocked if event is at capacity; if a cancelled booking already exists it is re-activated rather than duplicated; an in-app notification is sent to the user confirming the booking; points are awarded. |
 | US-B02 | As an **attendee**, I want to view all my bookings so that I can track upcoming and past events. | Returns all bookings for the authenticated user, ordered by most recent. |
 | US-B03 | As an **attendee**, I want to cancel my booking so that I can free up my spot. | Sets booking status to `Cancelled`; only the booking owner can cancel; returns `204` or `403`. |
+| US-B04 | As an **attendee**, I want to download an ICS calendar file for my booking so that I can add the event to my calendar. | `GET /api/bookings/{id}/ics` returns a valid `.ics` file for the booked event; only the booking owner can download; cancelled bookings return `400`. |
 
 ---
 
@@ -78,6 +94,32 @@ User stories for the Event Management System, written from the perspective of ea
 
 ---
 
+## Favourites
+
+| ID | User Story | Acceptance Criteria |
+|---|---|---|
+| US-FAV01 | As an **attendee**, I want to save an event to my favourites so that I can easily find it later. | `POST /api/favorites/{eventId}` saves the event; duplicate saves return `409`; suspended events return `404`; returns `201`. |
+| US-FAV02 | As an **attendee**, I want to remove an event from my favourites so that my list stays relevant. | `DELETE /api/favorites/{eventId}` removes the saved event; returns `204` or `404` if not saved. |
+| US-FAV03 | As an **attendee**, I want to view all my saved events so that I can quickly revisit events I am interested in. | `GET /api/favorites` returns saved, non-suspended events ordered by most recently saved, with full event details. |
+
+---
+
+## Notifications
+
+| ID | User Story | Acceptance Criteria |
+|---|---|---|
+| US-NOT01 | As an **attendee**, I want to see my notification feed so that I can stay informed about events I care about. | `GET /api/notifications` returns up to 50 notifications for the authenticated user, ordered by most recent; each notification includes type, title, message, read status, timestamp, and linked event ID. |
+| US-NOT02 | As an **attendee**, I want to see how many unread notifications I have so that I know when to check my feed. | `GET /api/notifications/unread-count` returns the count of unread notifications; used to render a badge in the UI. |
+| US-NOT03 | As an **attendee**, I want to mark a single notification as read so that my unread count stays accurate. | `PATCH /api/notifications/{id}/read` sets `isRead = true`; returns `404` if the notification does not belong to the user; returns `204`. |
+| US-NOT04 | As an **attendee**, I want to mark all notifications as read at once so that I can clear my feed efficiently. | `PATCH /api/notifications/read-all` sets all of the user's unread notifications to read; returns `204`. |
+
+Notifications are triggered automatically by the following platform events:
+- **Booking confirmed** — sent to the attendee when they book an event.
+- **Announcement posted** — fanned out to all confirmed attendees of that event.
+- **Event details updated** — sent to confirmed attendees and subscribers of the host when a published or postponed event is edited.
+
+---
+
 ## Subscriptions
 
 | ID | User Story | Acceptance Criteria |
@@ -98,6 +140,17 @@ User stories for the Event Management System, written from the perspective of ea
 | US-OP03 | As a **host**, I want to view my private dashboard so that I can see aggregate performance across all my events. | Returns total events, attendees, revenue, and checked-in count; split into upcoming and recent event lists, each with per-event booking and revenue figures. |
 | US-OP04 | As a **host**, I want to view and manage the attendee list for each of my events so that I can handle check-ins, refunds, and exports. | Lists all bookings (confirmed and cancelled) with check-in status and QR token; supports search; exportable as CSV. |
 | US-OP05 | As a **host**, I want to cancel any attendee's booking regardless of the 7-day rule so that I can issue refunds at my discretion. | `DELETE /api/organizers/me/events/{eventId}/bookings/{bookingId}` cancels the booking and deducts the attendee's earned loyalty points; returns `204`. |
+
+---
+
+## Payouts
+
+| ID | User Story | Acceptance Criteria |
+|---|---|---|
+| US-PAY01 | As a **host**, I want to submit a payout request for my event revenue so that I can withdraw my earnings. | `POST /api/payouts` requires a positive amount and bank details; only one pending request allowed at a time — a duplicate returns `409`; returns `201` with the created request. |
+| US-PAY02 | As a **host**, I want to view all my payout requests so that I can track the status of my withdrawals. | `GET /api/payouts/mine` returns all the authenticated host's payout requests ordered by most recent, including status (`Pending`, `Approved`, `Rejected`), amount, bank details, admin notes, and processed date. |
+| US-PAY03 | As an **Admin**, I want to list all payout requests so that I can process withdrawals for hosts. | `GET /api/payouts` returns all requests; supports optional `?status=` filter; includes organiser name and ID. |
+| US-PAY04 | As an **Admin**, I want to approve or reject a payout request so that hosts receive or are denied their requested funds. | `PATCH /api/payouts/{id}` accepts `status` of `Approved` or `Rejected` and optional `adminNotes`; only `Pending` requests can be processed; returns `204`. |
 
 ---
 
