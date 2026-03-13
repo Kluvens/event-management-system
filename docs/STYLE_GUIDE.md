@@ -46,7 +46,7 @@ Conventions for both the **ASP.NET Core backend** (C#) and the **React frontend*
 | Public property | `PascalCase` | `CheckInToken` |
 | Private field | `_camelCase` | `_db`, `_resolver` |
 | Local variable | `camelCase` | `confirmedCount`, `userId` |
-| Constant | `PascalCase` (class-level) or `UPPER_SNAKE` (file-scoped) | `RoleAdmin`, `StatusConfirmed` |
+| Constant | `PascalCase` | `RoleAdmin`, `StatusConfirmed` |
 | Async method | Suffix `Async` | `CreateBookingAsync` |
 | DTO / request / response | Suffix with role: `Request`, `Response`, `Dto` | `CreateEventRequest`, `BookingResponse` |
 
@@ -71,11 +71,12 @@ backend/EventManagement/
 
 - Inherit from `AppControllerBase`.
 - Declare the route at class level with `[Route("api/<resource>")]`.
-- Use primary constructor injection; do not assign to private fields unless the service needs to be used in multiple methods that cannot share the constructor-injected scope.
+- Use primary constructor injection for simple dependency injection. If a constructor requires non-trivial initialisation logic or argument validation, use a traditional constructor body instead.
 - Keep action methods thin: validate input → load data → apply business rule → persist → return DTO. Extract non-trivial logic to a private helper or service.
 - Private helpers that build queries or apply filters are prefixed with `Apply` (e.g., `ApplyVisibilityFilter`).
 - Constant strings shared across action methods (roles, statuses) go at the top of the class as `private const string`.
 - Use section-divider comments (`// ── Section Name ──`) to group related action methods.
+- Return errors using `Problem()` (or `ValidationProblem()` for model errors) so that all error responses follow the [ProblemDetails (RFC 7807)](https://datatracker.ietf.org/doc/html/rfc7807) format — this keeps client error handling uniform and Swagger-friendly.
 
 ```csharp
 // Good
@@ -89,6 +90,12 @@ public async Task<IActionResult> GetById(int id)
     if (ev is null) return NotFound();
     return Ok(MapToResponse(ev));
 }
+
+// Good — ProblemDetails for business rule violations
+if (event.IsSoldOut)
+    return Problem(
+        statusCode: StatusCodes.Status400BadRequest,
+        detail: "This event is fully booked.");
 ```
 
 ### DTOs
@@ -213,6 +220,7 @@ const pill = isAlmostFull
   ```
 - Mutations call `queryClient.invalidateQueries` on success to keep cached data fresh.
 - The shared axios instance lives in `src/api/axios.ts`; do not create additional instances.
+- For components already wrapped in a `<Suspense>` boundary, prefer `useSuspenseQuery` over `useQuery` to remove manual `isLoading` handling. This is the direction recommended by TanStack Query v5 and React 19+.
 
 ### State Management
 

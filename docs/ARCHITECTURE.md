@@ -209,6 +209,27 @@ Each controller owns exactly one aggregate or cross-cutting concern:
 | Resource not found | 404 Not Found |
 | Duplicate resource | 409 Conflict |
 
+All non-2xx responses use the **ProblemDetails (RFC 7807)** format:
+
+```json
+{
+  "type": "https://tools.ietf.org/html/rfc7807",
+  "title": "Bad Request",
+  "status": 400,
+  "detail": "This event is fully booked."
+}
+```
+
+Validation errors (model binding failures) use `ValidationProblemDetails`, which adds an `errors` map.
+
+### Pagination
+
+List endpoints that can return large result sets support cursor-based pagination via `page` and `pageSize` query parameters (default `pageSize=12`, maximum `pageSize=100`). Responses include a top-level count of total matching records so clients can calculate page counts.
+
+```
+GET /api/events?page=2&pageSize=20
+```
+
 ### Visibility Rules for Events
 
 ```

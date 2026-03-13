@@ -38,13 +38,17 @@ Maintainers have the right to remove, edit, or reject comments, commits, code, i
 
 ## Scope
 
-This Code of Conduct applies within all project spaces — including the repository, issues, pull requests, and any other forum used by the project — and also applies when an individual is representing the project in public spaces.
+This Code of Conduct applies within all project spaces — including the repository, issues, pull requests, and any other forum used by the project — and also applies when an individual is officially representing the project in public spaces (e.g., posting on behalf of the project on social media, speaking at an event, or acting as a designated representative). Behaviour outside project spaces that materially harms other community members or the reputation of the project may also be subject to enforcement at maintainer discretion.
 
 ---
 
 ## Enforcement
 
-Instances of abusive, harassing, or otherwise unacceptable behaviour may be reported to the project maintainers. All complaints will be reviewed and investigated promptly and fairly. All maintainers are obligated to respect the privacy and security of the reporter.
+Instances of abusive, harassing, or otherwise unacceptable behaviour may be reported to the project maintainer directly:
+
+**Email:** yangjiapeng6888@gmail.com
+
+Reports may be submitted anonymously if preferred. All complaints will be reviewed and investigated promptly and fairly. All maintainers are obligated to respect the privacy and security of the reporter, and no personal details will be disclosed to the subject of a report without the reporter's consent.
 
 ---
 
@@ -58,7 +62,7 @@ Maintainers will follow these guidelines when determining consequences:
 
 ### 2. Warning
 **Impact:** A single incident or series of actions that violate community standards.
-**Consequence:** A warning with consequences for continued behaviour. No interaction with the people involved for a specified period. Violating these terms may lead to a temporary or permanent ban.
+**Consequence:** A formal warning, which may include a temporary restriction on interaction with the affected individuals for a specified period. Violating these terms may lead to a temporary or permanent ban.
 
 ### 3. Temporary Ban
 **Impact:** A serious violation of community standards, including sustained inappropriate behaviour.
