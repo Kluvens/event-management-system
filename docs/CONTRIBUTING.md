@@ -1,13 +1,17 @@
 # Contributing Guide
 
+> Please note that this project is released with a [Contributor Code of Conduct](CODE_OF_CONDUCT.md).
+> By participating in this project you agree to abide by its terms.
+
 ## Table of Contents
 1. [Getting Started](#getting-started)
-2. [Branch Naming](#branch-naming)
-3. [Commit Messages](#commit-messages)
-4. [Pull Requests](#pull-requests)
-5. [Code Review](#code-review)
-6. [Testing Requirements](#testing-requirements)
-7. [Definition of Done](#definition-of-done)
+2. [Finding Something to Work On](#finding-something-to-work-on)
+3. [Branch Naming](#branch-naming)
+4. [Commit Messages](#commit-messages)
+5. [Pull Requests](#pull-requests)
+6. [Code Review](#code-review)
+7. [Testing Requirements](#testing-requirements)
+8. [Definition of Done](#definition-of-done)
 
 ---
 
@@ -36,6 +40,15 @@
 
 ---
 
+## Finding Something to Work On
+
+- Browse issues labelled **`good first issue`**, **`help wanted`**, or **`documentation`** — these are deliberately kept approachable for new contributors.
+- Comment on the issue to say you'd like to work on it. This prevents two people solving the same problem in parallel.
+- If you have an idea that isn't captured in an existing issue, open a new issue with a brief proposal **before** writing code. This avoids wasted effort if the direction doesn't fit the project.
+- Documentation improvements and additional test coverage are always welcome and rarely require a proposal first.
+
+---
+
 ## Branch Naming
 
 Branches **must** follow this pattern:
@@ -57,7 +70,12 @@ Branches **must** follow this pattern:
 **Rules:**
 - Use **kebab-case** for the description (`feat/add-waitlist-notifications`, not `feat/AddWaitlistNotifications`).
 - Keep descriptions short — 3–5 words max.
-- Always branch off the latest `main`.
+- Always branch off the latest `main` and keep your branch up to date using rebase:
+  ```bash
+  git fetch origin
+  git rebase origin/main
+  ```
+  Prefer rebase over merge to keep a linear, readable history.
 
 **Examples:**
 ```
@@ -86,7 +104,9 @@ Follow the **Conventional Commits** specification.
 **Rules:**
 - Summary line: imperative mood, no capital first letter, no trailing period, ≤ 72 characters.
 - Body: wrap at 72 characters, explain the motivation and contrast with prior behaviour.
-- Use `BREAKING CHANGE:` in the footer when a public API or DB schema changes in a non-backwards-compatible way.
+- Breaking changes must be signalled in **both** ways:
+  - Append `!` after the type/scope in the summary: `feat(api)!: …`
+  - Add a `BREAKING CHANGE:` footer describing what broke and the migration path.
 
 **Examples:**
 ```
@@ -100,6 +120,11 @@ fix(auth): return 401 instead of 500 on expired JWT
 refactor(events): extract visibility filter into helper method
 
 chore: upgrade xUnit to 2.9 and fix test runner warnings
+
+feat(api)!: remove deprecated /v1/users endpoint
+
+BREAKING CHANGE: /v1/users is removed; all clients must migrate to
+/v2/users. The response shape is unchanged — only the path differs.
 ```
 
 ---
@@ -147,6 +172,12 @@ fix(bookings): prevent double-booking on concurrent requests
 
 - Keep PRs focused. One logical change per PR.
 - If a PR exceeds ~400 lines of meaningful diff, consider splitting it.
+
+### Merge Strategy
+
+We use **squash and merge** for most PRs. This collapses the branch into a single clean commit on `main` and keeps the history linear.
+
+Use **rebase and merge** only when every individual commit on the branch is meaningful and you want them preserved verbatim (e.g. a multi-step refactor where each step must be bisectable).
 
 ---
 
