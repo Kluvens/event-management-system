@@ -4,6 +4,10 @@ Base URL: `http://localhost:5266`
 
 All request/response bodies are JSON. Endpoints marked with `[Auth]` require a `Bearer` token in the `Authorization` header.
 
+All error responses follow the **ProblemDetails (RFC 7807)** format (`{ type, title, status, detail }`). Validation failures include an additional `errors` map.
+
+> **Rate limiting** — high-frequency write endpoints (bookings, reviews, check-in) are rate-limited in production. Clients that exceed the limit receive `429 Too Many Requests`.
+
 ---
 
 ## Table of Contents
@@ -394,7 +398,7 @@ Cancel a booking (sets status to `Cancelled`). Only the booking owner can cancel
 
 ### `POST /api/bookings/{id}/checkin` `[Auth]`
 
-Check in an attendee by booking ID. Only the event host or an admin can call this.
+Check in an attendee by booking ID. Suitable for internal/admin tooling where the booking ID is already known. Only the event host or an admin can call this.
 
 **Response `204 No Content`**
 **Response `400 Bad Request`** — booking is cancelled or already checked in.
@@ -403,9 +407,11 @@ Check in an attendee by booking ID. Only the event host or an admin can call thi
 
 ---
 
-### `GET /api/bookings/checkin/{token}` `[Auth]`
+### `GET /api/bookings/checkin/{token}`
 
-Look up booking information by QR token. Used by a host's QR scanner to preview an attendee before checking them in.
+Look up booking information by QR token. This is a **public endpoint** — no authentication is required — so that a scanner device can identify an attendee before the host confirms check-in.
+
+**Recommended flow:** call this first to display the attendee's details, then call `POST /api/bookings/checkin/{token}` (with auth) to mark attendance.
 
 **Response `200 OK`**
 ```json
@@ -425,7 +431,7 @@ Look up booking information by QR token. Used by a host's QR scanner to preview 
 
 ### `POST /api/bookings/checkin/{token}` `[Auth]`
 
-Check in an attendee via their QR token. Only the event host or an admin can call this.
+Mark an attendee as attended via their QR token. **Preferred for on-site check-in** (scanner devices encode the token, not the booking ID). Only the event host or an admin can call this.
 
 **Response `204 No Content`**
 **Response `400 Bad Request`** — booking is cancelled or already checked in.
