@@ -1,0 +1,114 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel in-progress runs for the same branch/PR so pushes don't queue up
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Backend ────────────────────────────────────────────────────────────
+  backend:
+    name: Backend — build & test
+    runs-on: ubuntu-latest
+
+    # dorny/test-reporter needs checks:write to post PR annotations
+    permissions:
+      contents: read
+      checks: write
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      # Cache the NuGet global package folder to speed up restores
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Restore dependencies
+        run: dotnet restore ../event-management-system.sln
+
+      - name: Build (no restore)
+        run: dotnet build ../event-management-system.sln --no-restore --configuration Release
+
+      # Tests use in-memory SQLite — no external database required
+      - name: Run tests with coverage
+        run: |
+          dotnet test ../event-management-system.sln \
+            --no-build \
+            --configuration Release \
+            --logger "trx;LogFileName=test-results.trx" \
+            --collect:"XPlat Code Coverage" \
+            --results-directory ./TestResults
+
+      # Publish test results as a PR check annotation
+      - name: Publish test results
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Backend test results
+          path: backend/TestResults/test-results.trx
+          reporter: dotnet-trx
+          fail-on-error: true
+
+      # Upload raw coverage data as an artifact for later inspection
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-coverage
+          path: backend/TestResults/**/coverage.cobertura.xml
+          retention-days: 7
+
+  # ── Frontend ───────────────────────────────────────────────────────────
+  frontend:
+    name: Frontend — type-check & build
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Type-check without emitting — catches type errors without a full build
+      - name: TypeScript type-check
+        run: npx tsc --noEmit
+
+      # Full production build (tsc + vite) — catches bundle-time errors
+      - name: Build
+        run: npm run build
+        env:
+          # Treat TS errors as build failures (already guaranteed by tsc step,
+          # but belt-and-suspenders for the vite pass)
+          CI: true

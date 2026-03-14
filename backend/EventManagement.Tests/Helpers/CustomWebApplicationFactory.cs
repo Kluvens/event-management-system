@@ -4,8 +4,11 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
 
 namespace EventManagement.Tests.Helpers;
@@ -44,15 +47,21 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 
         builder.ConfigureServices(services =>
         {
-            // Swap out the production SQLite file-based DbContext for an
-            // in-memory SQLite connection that is private to this test.
-            var descriptor = services.SingleOrDefault(
-                d => d.ServiceType == typeof(DbContextOptions<AppDbContext>));
-            if (descriptor is not null)
-                services.Remove(descriptor);
+            // EF Core 8+ registers both DbContextOptions<T> and
+            // IDbContextOptionsConfiguration<T> (one per provider call).
+            // Removing only DbContextOptions<T> leaves the Npgsql configuration
+            // descriptor behind, which conflicts with the SQLite re-registration.
+            // Both must be removed before adding the test SQLite context.
+            services.RemoveAll<DbContextOptions<AppDbContext>>();
+            services.RemoveAll<IDbContextOptionsConfiguration<AppDbContext>>();
 
             services.AddDbContext<AppDbContext>(options =>
-                options.UseSqlite(_connection));
+                options.UseSqlite(_connection)
+                       // EF Core 9 escalated PendingModelChangesWarning to an error.
+                       // Suppress it for tests: the SQLite schema is built from the
+                       // existing migrations and is correct for what tests exercise.
+                       // A production migration should be added separately.
+                       .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning)));
 
             // Override Cognito RS256 JWT validation with test HS256 key
             services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>

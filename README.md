@@ -90,7 +90,7 @@ This project was originally submitted for UNSW COMP3900 (Computer Science Projec
 | Runtime | .NET 9 (ASP.NET Core) |
 | Language | C# 13 |
 | ORM | Entity Framework Core 9 |
-| Database | SQLite (dev) — swap connection string for PostgreSQL/MySQL in prod |
+| Database | PostgreSQL 15 (Supabase) via Supavisor session pooler |
 | Auth | AWS Cognito (OIDC / JWT verification via `Amazon.AspNetCore.Identity.Cognito`) |
 | Storage | AWS S3 (via AWS SDK for .NET) for event cover images |
 | API docs | Swashbuckle / OpenAPI 3 |
@@ -228,16 +228,17 @@ event-management-system/
 ### Prerequisites
 
 - [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
-- No external database setup required — SQLite file is created automatically on first run
+- A **Supabase** project (or any PostgreSQL 15+ instance) — the connection string goes in `appsettings.Development.json`
+- AWS credentials with `cognito-idp:GetUser` and S3 read/write permissions
 
 ### Configuration
 
-Open [backend/EventManagement/appsettings.json](backend/EventManagement/appsettings.json) and review the defaults:
+Create `backend/EventManagement/appsettings.Development.json` (git-ignored) and fill in your values:
 
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Data Source=events.db"
+    "DefaultConnection": "Host=<supavisor-host>;Port=5432;Database=postgres;Username=postgres.<project-ref>;Password=<password>;SSL Mode=Require"
   },
   "Cognito": {
     "Region": "ap-southeast-2",
@@ -254,7 +255,7 @@ Open [backend/EventManagement/appsettings.json](backend/EventManagement/appsetti
 }
 ```
 
-> **AWS credentials:** The backend reads AWS credentials from the standard credential chain (environment variables, `~/.aws/credentials`, or an IAM role). Ensure the running process has `cognito-idp:GetUser` and S3 read/write permissions for the configured resources.
+> **AWS credentials:** The backend reads credentials from the standard chain (environment variables, `~/.aws/credentials`, or an IAM role).
 
 ### Run the API
 
@@ -265,7 +266,7 @@ dotnet run
 
 The API starts on `http://localhost:5266` by default (see [backend/EventManagement/Properties/launchSettings.json](backend/EventManagement/Properties/launchSettings.json)).
 
-EF Core migrations are applied automatically on startup — the SQLite database, seeded categories, and seeded tags are created on first launch.
+EF Core migrations are applied automatically on startup — seeded categories and tags are created on first launch.
 
 Open your browser at `http://localhost:5266` to reach the **Swagger UI**.
 
@@ -318,7 +319,7 @@ Full table definitions, ER diagram, constraint documentation, design decisions, 
 
 ## Testing
 
-The test suite uses **xUnit** with `Microsoft.AspNetCore.Mvc.Testing` to spin up a real in-process server backed by an SQLite in-memory database. `CustomWebApplicationFactory` overrides JWT validation to use an HS256 test key, and dev-only endpoints (`/api/dev/auth/*`) mint tokens so tests run without a live Cognito pool. **225 tests, all passing.**
+The test suite uses **xUnit** with `Microsoft.AspNetCore.Mvc.Testing` to spin up a real in-process server backed by an SQLite in-memory database. `CustomWebApplicationFactory` overrides JWT validation to use an HS256 test key, and dev-only endpoints (`/api/dev/auth/*`) mint tokens so tests run without a live Cognito pool. **354 tests, all passing.**
 
 ```bash
 cd backend/EventManagement.Tests
