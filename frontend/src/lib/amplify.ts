@@ -12,8 +12,10 @@ if (import.meta.env.VITE_COGNITO_USER_POOL_ID) {
           oauth: {
             domain:          import.meta.env.VITE_COGNITO_DOMAIN,
             scopes:          ['openid', 'email', 'profile'],
-            redirectSignIn:  ['http://localhost:5173/auth/callback'],
-            redirectSignOut: ['http://localhost:5173/'],
+            // Use the current origin so the redirect works on any port
+            // (dev :5173, preview :4173, production domain).
+            redirectSignIn:  [`${window.location.origin}/auth/callback`],
+            redirectSignOut: [`${window.location.origin}/`],
             responseType:    'code',
           },
         },
