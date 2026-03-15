@@ -7,6 +7,24 @@
     <meta name="description" content="Browse, book, and manage events near you." />
     <meta name="theme-color" content="#f59e0b" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <!-- Fonts: preconnect, then load stylesheet off the critical path.
+         media="print" prevents render-blocking; onload swaps it to "all"
+         so the font applies once the stylesheet arrives.  font-display=swap
+         in the URL ensures text is visible immediately with a fallback font. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap"
+      media="print"
+      onload="this.media='all'"
+    />
+    <noscript>
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap"
+      />
+    </noscript>
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
     <meta property="og:title" content="EventHub – Discover &amp; Book Events" />

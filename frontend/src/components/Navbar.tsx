@@ -1,5 +1,4 @@
 import { useUpdateProfile } from '@/api/organizers'
-import { NotificationBell } from '@/components/NotificationBell'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import {
@@ -26,8 +25,6 @@ import {
 import { useTheme } from '@/contexts/ThemeContext'
 import { getInitials } from '@/lib/utils'
 import { useAuthStore } from '@/stores/authStore'
-import { signOut } from 'aws-amplify/auth'
-import { AnimatePresence, motion } from 'framer-motion'
 import {
   Heart,
   LayoutDashboard,
@@ -44,9 +41,13 @@ import {
   X,
   Zap,
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
+
+const NotificationBell = lazy(() =>
+  import('@/components/NotificationBell').then((m) => ({ default: m.NotificationBell })),
+)
 
 export function Navbar() {
   const navigate = useNavigate()
@@ -74,6 +75,7 @@ export function Navbar() {
 
   async function handleLogout() {
     logout()
+    const { signOut } = await import('aws-amplify/auth')
     await signOut()
     navigate('/')
   }
@@ -162,15 +164,12 @@ export function Navbar() {
   )
 
   return (
-    <motion.header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+    <header
+      className={`fixed top-0 left-0 right-0 z-50 animate-navbar-in transition-all duration-300 ${
         isTransparent
           ? 'border-transparent bg-transparent'
           : 'border-b border-border bg-background/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/80'
       }`}
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: 'easeOut' }}
     >
       <div className="container mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
         {/* Logo */}
@@ -205,7 +204,9 @@ export function Navbar() {
                 Create Event
               </Button>
 
-              <NotificationBell transparent={isTransparent} />
+              <Suspense fallback={<div className="h-8 w-8" />}>
+                <NotificationBell transparent={isTransparent} />
+              </Suspense>
 
               <Button
                 variant="ghost"
@@ -223,7 +224,7 @@ export function Navbar() {
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="flex items-center rounded-full focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2">
+                  <button aria-label="Account menu" className="flex items-center rounded-full focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2">
                     <Avatar className="h-8 w-8">
                     <AvatarFallback className={`text-xs font-semibold ${ isTransparent ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-700'}`}>
                         {getInitials(user?.name ?? '?')}
@@ -370,17 +371,11 @@ export function Navbar() {
                 aria-controls="mobile-nav"
                 className={`md:hidden ${isTransparent ? 'text-white hover:bg-white/10' : ''}`}
               >
-                <AnimatePresence mode="wait">
-                  {mobileOpen ? (
-                    <motion.span key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.15 }}>
-                      <X className="h-5 w-5" />
-                    </motion.span>
-                  ) : (
-                    <motion.span key="menu" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} transition={{ duration: 0.15 }}>
-                      <Menu className="h-5 w-5" />
-                    </motion.span>
-                  )}
-                </AnimatePresence>
+                <span
+                  className={`transition-transform duration-150 ${mobileOpen ? 'rotate-90' : 'rotate-0'}`}
+                >
+                  {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                </span>
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-64">
@@ -431,6 +426,6 @@ export function Navbar() {
           </Sheet>
         </div>
       </div>
-    </motion.header>
+    </header>
   )
 }
