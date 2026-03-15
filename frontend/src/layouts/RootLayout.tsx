@@ -1,6 +1,5 @@
 import { Outlet, useLocation, Link } from 'react-router-dom'
 import { useEffect } from 'react'
-import { motion } from 'framer-motion'
 import { Navbar } from '@/components/Navbar'
 
 export function RootLayout() {
@@ -17,14 +16,12 @@ export function RootLayout() {
       <Navbar />
       {/* On the home page the navbar is transparent over the hero, so no padding needed */}
       <main className={`flex-1 ${isHome ? '' : 'pt-14'}`}>
-        <motion.div
-          key={pathname}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.2, ease: 'easeOut' }}
-        >
+        {/* CSS fade-in instead of framer-motion keeps the animation library
+            out of the critical-path bundle — framer-motion loads only with
+            the page chunks that actually use it (HomePage, EventDetail…). */}
+        <div key={pathname} className="animate-page-in">
           <Outlet />
-        </motion.div>
+        </div>
       </main>
 
       {!hideFooter && (
